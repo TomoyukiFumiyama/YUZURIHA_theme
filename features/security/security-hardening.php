@@ -6,7 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-class MyTheme_Security_Hardening {
+class YZRH_Security_Hardening {
     /**
      * Bootstrap the hardening measures.
      */
@@ -82,14 +82,14 @@ class MyTheme_Security_Hardening {
     /**
      * Send a set of recommended security headers with each response.
      *
-     * Allows filtering via {@see 'mytheme_security_headers'}.
+     * Allows filtering via {@see 'yzrh_security_headers'}.
      */
     public static function send_security_headers() {
         if ( headers_sent() ) {
             return;
         }
 
-        $headers = apply_filters( 'mytheme_security_headers', self::get_default_security_headers() );
+        $headers = apply_filters( 'yzrh_security_headers', self::get_default_security_headers() );
 
         if ( empty( $headers ) || ! is_array( $headers ) ) {
             return;
@@ -111,17 +111,13 @@ class MyTheme_Security_Hardening {
      */
     protected static function get_default_security_headers() {
         return array(
-            'Strict-Transport-Security'       => 'max-age=63072000; includeSubDomains; preload',
-            // HPKP requires site-specific key hashes. Filter the value to provide real pins.
-            'Public-Key-Pins'                 => apply_filters( 'mytheme_security_public_key_pins', '' ),
-            'X-Frame-Options'                 => 'SAMEORIGIN',
-            'X-XSS-Protection'                => '1; mode=block',
-            'X-Content-Type-Options'          => 'nosniff',
-            'Content-Security-Policy'         => "default-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'self';", // phpcs:ignore WordPress.WP.CapitalPDangit.Misspelled -- Header name.
+            'Strict-Transport-Security'         => 'max-age=63072000; includeSubDomains; preload',
+            'X-Frame-Options'                   => 'SAMEORIGIN',
+            'X-Content-Type-Options'            => 'nosniff',
+            'Content-Security-Policy'           => "default-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'self';", // phpcs:ignore WordPress.WP.CapitalPDangit.Misspelled -- Header name.
             'X-Permitted-Cross-Domain-Policies' => 'none',
-            'Referrer-Policy'                 => 'strict-origin-when-cross-origin',
-            'Expect-CT'                       => 'max-age=86400, enforce, report-uri="https://example.com/report"',
-            'Feature-Policy'                  => "accelerometer 'none'; camera 'none'; geolocation 'none'; gyroscope 'none'; magnetometer 'none'; microphone 'none'; payment 'none'; usb 'none'",
+            'Referrer-Policy'                   => 'strict-origin-when-cross-origin',
+            'Permissions-Policy'                => "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()",
         );
     }
 }

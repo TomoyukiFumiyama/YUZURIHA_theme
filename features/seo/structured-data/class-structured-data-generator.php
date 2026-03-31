@@ -6,8 +6,8 @@ if ( ! defined( 'ABSPATH' ) ) {
         exit;
 }
 
-if ( ! class_exists( 'MyTheme_Structured_Data_Generator' ) ) {
-        class MyTheme_Structured_Data_Generator {
+if ( ! class_exists( 'YZRH_Structured_Data_Generator' ) ) {
+        class YZRH_Structured_Data_Generator {
                 /**
                  * Registered schema callbacks.
                  *
@@ -75,7 +75,7 @@ if ( ! class_exists( 'MyTheme_Structured_Data_Generator' ) ) {
                          *
                          * @param array $callbacks Registered callbacks.
                          */
-                        return apply_filters( 'mytheme_structured_data_schema_callbacks', $callbacks );
+                        return apply_filters( 'yzrh_structured_data_schema_callbacks', $callbacks );
                 }
 
 		/**
@@ -129,7 +129,7 @@ if ( ! class_exists( 'MyTheme_Structured_Data_Generator' ) ) {
                          * @param WP_Term $primary Primary category.
                          * @param int     $post_id Post ID.
                          */
-                        return apply_filters( 'mytheme_structured_data_primary_category', $primary, $post_id );
+                        return apply_filters( 'yzrh_structured_data_primary_category', $primary, $post_id );
                 }
 
 		/**
@@ -173,7 +173,7 @@ if ( ! class_exists( 'MyTheme_Structured_Data_Generator' ) ) {
 				$schema['sameAs'] = $same_as;
 			}
 
-			return apply_filters( 'mytheme_structured_data_author', $schema, $post_id, $author_id );
+			return apply_filters( 'yzrh_structured_data_author', $schema, $post_id, $author_id );
 		}
 
                 /**
@@ -193,7 +193,7 @@ if ( ! class_exists( 'MyTheme_Structured_Data_Generator' ) ) {
                                 $schema['logo'] = $logo;
                         }
 
-                        return apply_filters( 'mytheme_structured_data_publisher', $schema );
+                        return apply_filters( 'yzrh_structured_data_publisher', $schema );
                 }
 
                 /**
@@ -305,7 +305,7 @@ if ( ! class_exists( 'MyTheme_Structured_Data_Generator' ) ) {
 			 * @param bool $is_service Detected state.
 			 * @param int  $post_id    Page ID.
 			 */
-			return (bool) apply_filters( 'mytheme_structured_data_is_service_page', $is_service, $post_id );
+			return (bool) apply_filters( 'yzrh_structured_data_is_service_page', $is_service, $post_id );
 		}
 
 		/**

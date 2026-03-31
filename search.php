@@ -14,7 +14,7 @@ get_header();
 			<header class="page-header">
 				<h1 class="page-title">
 					<?php
-					printf( esc_html__( 'Search Results for: %s', 'mytheme' ), '<span>'. get_search_query(). '</span>' );
+					printf( esc_html__( 'Search Results for: %s', 'yzrh' ), '<span>' . esc_html( get_search_query() ) . '</span>' );
 					?>
 				</h1>
 			</header><?php

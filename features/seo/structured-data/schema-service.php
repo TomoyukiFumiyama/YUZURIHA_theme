@@ -6,9 +6,9 @@ if ( ! defined( 'ABSPATH' ) ) {
         exit;
 }
 
-if ( ! function_exists( 'mytheme_structured_data_schema_service' ) ) {
-        function mytheme_structured_data_schema_service() {
-                if ( ! MyTheme_Structured_Data_Generator::is_service_page() ) {
+if ( ! function_exists( 'yzrh_structured_data_schema_service' ) ) {
+        function yzrh_structured_data_schema_service() {
+                if ( ! YZRH_Structured_Data_Generator::is_service_page() ) {
                         return null;
                 }
 
@@ -22,15 +22,15 @@ if ( ! function_exists( 'mytheme_structured_data_schema_service' ) ) {
                         '@type'       => 'Service',
                         'name'        => get_the_title( $post_id ),
                         'serviceType' => get_the_title( $post_id ),
-                        'description' => MyTheme_Structured_Data_Generator::get_post_description( $post_id ),
-                        'provider'    => MyTheme_Structured_Data_Generator::get_publisher_schema(),
+                        'description' => YZRH_Structured_Data_Generator::get_post_description( $post_id ),
+                        'provider'    => YZRH_Structured_Data_Generator::get_publisher_schema(),
                 );
 
-                $image = MyTheme_Structured_Data_Generator::get_post_image_object( $post_id );
+                $image = YZRH_Structured_Data_Generator::get_post_image_object( $post_id );
                 if ( $image ) {
                         $schema['image'] = $image;
                 }
 
-                return apply_filters( 'mytheme_structured_data_service', $schema, $post_id );
+                return apply_filters( 'yzrh_structured_data_service', $schema, $post_id );
         }
 }

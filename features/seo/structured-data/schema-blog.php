@@ -6,14 +6,14 @@ if ( ! defined( 'ABSPATH' ) ) {
         exit;
 }
 
-if ( ! function_exists( 'mytheme_structured_data_schema_blog' ) ) {
+if ( ! function_exists( 'yzrh_structured_data_schema_blog' ) ) {
         /**
          * Outputs the Blog entity schema describing the site's blog.
          *
          * @return array|null
          */
-        function mytheme_structured_data_schema_blog() {
-                if ( ! MyTheme_Structured_Data_Generator::is_blog_listing_context() ) {
+        function yzrh_structured_data_schema_blog() {
+                if ( ! YZRH_Structured_Data_Generator::is_blog_listing_context() ) {
                         return null;
                 }
 
@@ -28,29 +28,29 @@ if ( ! function_exists( 'mytheme_structured_data_schema_blog' ) ) {
                 $schema = array(
                         '@context'    => 'https://schema.org',
                         '@type'       => 'Blog',
-                        'name'        => MyTheme_Structured_Data_Generator::sanitize_text( $site_name ),
+                        'name'        => YZRH_Structured_Data_Generator::sanitize_text( $site_name ),
                         'url'         => $blog_url,
-                        'publisher'   => MyTheme_Structured_Data_Generator::get_publisher_schema(),
+                        'publisher'   => YZRH_Structured_Data_Generator::get_publisher_schema(),
                         'inLanguage'  => get_bloginfo( 'language' ),
                 );
 
                 $description = get_bloginfo( 'description' );
                 if ( $description ) {
-                        $schema['description'] = MyTheme_Structured_Data_Generator::sanitize_text( $description );
+                        $schema['description'] = YZRH_Structured_Data_Generator::sanitize_text( $description );
                 }
 
-                return apply_filters( 'mytheme_structured_data_blog', $schema );
+                return apply_filters( 'yzrh_structured_data_blog', $schema );
         }
 }
 
-if ( ! function_exists( 'mytheme_structured_data_schema_blog_itemlist' ) ) {
+if ( ! function_exists( 'yzrh_structured_data_schema_blog_itemlist' ) ) {
         /**
          * Outputs an ItemList schema for the current blog archive/list view.
          *
          * @return array|null
          */
-        function mytheme_structured_data_schema_blog_itemlist() {
-                if ( ! MyTheme_Structured_Data_Generator::is_blog_listing_context() ) {
+        function yzrh_structured_data_schema_blog_itemlist() {
+                if ( ! YZRH_Structured_Data_Generator::is_blog_listing_context() ) {
                         return null;
                 }
 
@@ -79,8 +79,8 @@ if ( ! function_exists( 'mytheme_structured_data_schema_blog_itemlist' ) ) {
                                 '@type'       => 'ListItem',
                                 'position'    => $position,
                                 'url'         => get_permalink( $post ),
-                                'name'        => wp_strip_all_tags( get_the_title( $post ) ),
-                                'description' => MyTheme_Structured_Data_Generator::get_post_description( $post->ID ),
+                                'name'        => YZRH_Structured_Data_Generator::sanitize_text( get_the_title( $post ) ),
+                                'description' => YZRH_Structured_Data_Generator::get_post_description( $post->ID ),
                         );
                 }
 
@@ -91,7 +91,7 @@ if ( ! function_exists( 'mytheme_structured_data_schema_blog_itemlist' ) ) {
                 $archive_title = '';
                 if ( is_home() ) {
                         $posts_page_id = (int) get_option( 'page_for_posts' );
-                        $archive_title = $posts_page_id ? get_the_title( $posts_page_id ) : __( 'Blog', 'mytheme' );
+                        $archive_title = $posts_page_id ? get_the_title( $posts_page_id ) : __( 'Blog', 'yzrh' );
                 } else {
                         $archive_title = get_the_archive_title();
                 }
@@ -101,7 +101,7 @@ if ( ! function_exists( 'mytheme_structured_data_schema_blog_itemlist' ) ) {
                 $schema = array(
                         '@context'       => 'https://schema.org',
                         '@type'          => 'ItemList',
-                        'name'           => MyTheme_Structured_Data_Generator::sanitize_text( $archive_title ),
+                        'name'           => YZRH_Structured_Data_Generator::sanitize_text( $archive_title ),
                         'url'            => get_pagenum_link( $paged ),
                         'itemListOrder'  => 'https://schema.org/ItemListOrderDescending',
                         'numberOfItems'  => count( $items ),
@@ -109,9 +109,9 @@ if ( ! function_exists( 'mytheme_structured_data_schema_blog_itemlist' ) ) {
                 );
 
                 if ( $archive_description ) {
-                        $schema['description'] = MyTheme_Structured_Data_Generator::sanitize_text( $archive_description );
+                        $schema['description'] = YZRH_Structured_Data_Generator::sanitize_text( $archive_description );
                 }
 
-                return apply_filters( 'mytheme_structured_data_blog_itemlist', $schema, $wp_query );
+                return apply_filters( 'yzrh_structured_data_blog_itemlist', $schema, $wp_query );
         }
 }

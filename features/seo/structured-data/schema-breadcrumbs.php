@@ -6,8 +6,8 @@ if ( ! defined( 'ABSPATH' ) ) {
         exit;
 }
 
-if ( ! function_exists( 'mytheme_structured_data_schema_breadcrumbs' ) ) {
-        function mytheme_structured_data_schema_breadcrumbs() {
+if ( ! function_exists( 'yzrh_structured_data_schema_breadcrumbs' ) ) {
+        function yzrh_structured_data_schema_breadcrumbs() {
                 $items    = array();
                 $position = 1;
 
@@ -19,7 +19,7 @@ if ( ! function_exists( 'mytheme_structured_data_schema_breadcrumbs' ) ) {
                 );
 
                 if ( is_front_page() ) {
-                        return apply_filters( 'mytheme_structured_data_breadcrumbs', array(
+                        return apply_filters( 'yzrh_structured_data_breadcrumbs', array(
                                 '@context'        => 'https://schema.org',
                                 '@type'           => 'BreadcrumbList',
                                 'itemListElement' => $items,
@@ -31,7 +31,7 @@ if ( ! function_exists( 'mytheme_structured_data_schema_breadcrumbs' ) ) {
                         $items[]       = array(
                                 '@type'    => 'ListItem',
                                 'position' => $position++,
-                                'name'     => $posts_page_id ? get_the_title( $posts_page_id ) : __( 'Blog', 'mytheme' ),
+                                'name'     => $posts_page_id ? get_the_title( $posts_page_id ) : __( 'Blog', 'yzrh' ),
                                 'item'     => $posts_page_id ? get_permalink( $posts_page_id ) : home_url( '/' ),
                         );
                 } elseif ( is_singular() ) {
@@ -48,7 +48,7 @@ if ( ! function_exists( 'mytheme_structured_data_schema_breadcrumbs' ) ) {
                                         );
                                 }
 
-                                $primary_category = MyTheme_Structured_Data_Generator::get_primary_category( $post_id );
+                                $primary_category = YZRH_Structured_Data_Generator::get_primary_category( $post_id );
                                 if ( $primary_category ) {
                                         $category_link = get_term_link( $primary_category );
                                         if ( ! is_wp_error( $category_link ) ) {
@@ -115,12 +115,12 @@ if ( ! function_exists( 'mytheme_structured_data_schema_breadcrumbs' ) ) {
                         $items[] = array(
                                 '@type'    => 'ListItem',
                                 'position' => $position++,
-                                'name'     => sprintf( __( 'Search results for "%s"', 'mytheme' ), get_search_query() ),
+                                'name'     => sprintf( __( 'Search results for "%s"', 'yzrh' ), get_search_query() ),
                                 'item'     => get_search_link(),
                         );
                 }
 
-                return apply_filters( 'mytheme_structured_data_breadcrumbs', array(
+                return apply_filters( 'yzrh_structured_data_breadcrumbs', array(
                         '@context'        => 'https://schema.org',
                         '@type'           => 'BreadcrumbList',
                         'itemListElement' => $items,

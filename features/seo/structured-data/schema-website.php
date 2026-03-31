@@ -6,8 +6,8 @@ if ( ! defined( 'ABSPATH' ) ) {
         exit;
 }
 
-if ( ! function_exists( 'mytheme_structured_data_schema_website' ) ) {
-        function mytheme_structured_data_schema_website() {
+if ( ! function_exists( 'yzrh_structured_data_schema_website' ) ) {
+        function yzrh_structured_data_schema_website() {
                 $site_name = get_bloginfo( 'name' );
                 $site_url  = home_url( '/' );
 
@@ -29,6 +29,6 @@ if ( ! function_exists( 'mytheme_structured_data_schema_website' ) ) {
                         'query-input' => 'required name=search_term_string',
                 );
 
-                return apply_filters( 'mytheme_structured_data_website', $schema );
+                return apply_filters( 'yzrh_structured_data_website', $schema );
         }
 }

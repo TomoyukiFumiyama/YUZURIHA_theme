@@ -72,7 +72,7 @@ Codex は以下の原則に従って行動する。
 
 - JSON-LD 出力ロジックは、できる限り専用ファイル（例：`inc/jsonld.php`）や
   専用の関数群に集約し、テンプレート側では「呼び出すだけ」にする
-- 条件分岐もなるべく 1 箇所（例：`mytheme_output_jsonld()`）で管理する
+- 条件分岐もなるべく 1 箇所（例：`yzrh_output_jsonld()`）で管理する
 
 ### 3-4. 安全性（Safety）
 
@@ -86,6 +86,14 @@ Codex は以下の原則に従って行動する。
 
 - 後で `FAQPage` や `BreadcrumbList` などを追加できるような設計にする
 - 関数名やファイル名、名前空間に余地を残しておく
+
+
+
+### 3-6. 継続的セキュリティ改善（Continuous Security Improvement）
+
+- WordPress 推奨のセキュリティ対策に反する実装（非推奨ヘッダー、危険な出力、未サニタイズ値など）を見つけた場合は、
+  JSON-LD 改修と同時でも都度修正する
+- 修正時は後方互換性を考慮しつつ、理由を README またはコミットメッセージで明示する
 
 ---
 
@@ -152,10 +160,10 @@ Codex は最終的に次の成果物を提供する。
    - もしくは `functions.php` 内のセクションとして明確に分離
 
 2. グローバル関数群
-   - `mytheme_output_jsonld()`
-   - `mytheme_jsonld_blogposting()`
-   - `mytheme_jsonld_blog_itemlist()`
-   - `mytheme_jsonld_author_person()`
+   - `yzrh_output_jsonld()`
+   - `yzrh_jsonld_blogposting()`
+   - `yzrh_jsonld_blog_itemlist()`
+   - `yzrh_jsonld_author_person()`
    （関数名はプロジェクト方針に応じて変更可）
 
 3. 実装仕様書

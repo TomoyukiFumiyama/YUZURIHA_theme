@@ -6,13 +6,13 @@ if ( ! defined( 'ABSPATH' ) ) {
         exit;
 }
 
-if ( ! function_exists( 'mytheme_structured_data_schema_author_profile' ) ) {
+if ( ! function_exists( 'yzrh_structured_data_schema_author_person' ) ) {
         /**
-         * Outputs a ProfilePage schema whose main entity is the requested author.
+         * Outputs a Person schema for the requested author archive page.
          *
          * @return array|null
          */
-        function mytheme_structured_data_schema_author_profile() {
+        function yzrh_structured_data_schema_author_person() {
                 if ( ! is_author() ) {
                         return null;
                 }
@@ -23,26 +23,18 @@ if ( ! function_exists( 'mytheme_structured_data_schema_author_profile' ) ) {
                 }
 
                 $author_id     = (int) $author->ID;
-                $person_schema = MyTheme_Structured_Data_Generator::get_author_schema( null, $author_id );
+                $person_schema = YZRH_Structured_Data_Generator::get_author_schema( null, $author_id );
                 if ( empty( $person_schema ) || empty( $person_schema['name'] ) ) {
                         return null;
                 }
 
-                $profile_url = isset( $person_schema['url'] ) ? $person_schema['url'] : get_author_posts_url( $author_id );
-                $page_name   = sprintf( __( '%s - Author Profile', 'mytheme' ), $person_schema['name'] );
-
-                $schema = array(
-                        '@context'   => 'https://schema.org',
-                        '@type'      => 'ProfilePage',
-                        'name'       => MyTheme_Structured_Data_Generator::sanitize_text( $page_name ),
-                        'url'        => $profile_url,
-                        'mainEntity' => $person_schema,
+                $schema = array_merge(
+                        array(
+                                '@context' => 'https://schema.org',
+                        ),
+                        $person_schema
                 );
 
-                if ( ! empty( $person_schema['description'] ) ) {
-                        $schema['description'] = $person_schema['description'];
-                }
-
-                return apply_filters( 'mytheme_structured_data_author_profile', $schema, $author_id );
+                return apply_filters( 'yzrh_structured_data_author_person', $schema, $author_id );
         }
 }
