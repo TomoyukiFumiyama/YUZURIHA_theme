@@ -50,5 +50,7 @@ get_header();
 </main>
 
 <?php
-get_sidebar();
+if ( yzrh_get_setting( 'display_show_sidebar_post', true ) ) {
+	get_sidebar();
+}
 get_footer();
