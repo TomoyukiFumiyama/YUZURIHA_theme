@@ -6,8 +6,8 @@ if ( ! defined( 'ABSPATH' ) ) {
         exit;
 }
 
-if ( ! function_exists( 'mytheme_structured_data_schema_organization' ) ) {
-        function mytheme_structured_data_schema_organization() {
+if ( ! function_exists( 'yzrh_structured_data_schema_organization' ) ) {
+        function yzrh_structured_data_schema_organization() {
                 $site_name = get_bloginfo( 'name' );
                 $site_url  = home_url( '/' );
 
@@ -22,11 +22,11 @@ if ( ! function_exists( 'mytheme_structured_data_schema_organization' ) ) {
                         'url'      => $site_url,
                 );
 
-                $logo = MyTheme_Structured_Data_Generator::get_logo_object();
+                $logo = YZRH_Structured_Data_Generator::get_logo_object();
                 if ( $logo ) {
                         $schema['logo'] = $logo;
                 }
 
-                return apply_filters( 'mytheme_structured_data_organization', $schema );
+                return apply_filters( 'yzrh_structured_data_organization', $schema );
         }
 }

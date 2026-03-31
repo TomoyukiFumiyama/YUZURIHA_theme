@@ -8,4 +8,4 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once __DIR__ . '/security-hardening.php';
 
-MyTheme_Security_Hardening::init();
+YZRH_Security_Hardening::init();

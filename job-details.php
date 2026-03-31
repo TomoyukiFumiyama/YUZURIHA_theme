@@ -2,7 +2,7 @@
 /**
  * Template Name: Job Details
  *
- * @package mytheme
+ * @package yzrh
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

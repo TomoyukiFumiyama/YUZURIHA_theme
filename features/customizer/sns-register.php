@@ -2,7 +2,7 @@
 /**
  * SNSアイコン用のカスタマイザー設定
  */
-function mytheme_customize_register_sns( $wp_customize ) {
+function yzrh_customize_register_sns( $wp_customize ) {
 
 	// セクション追加
 	$wp_customize->add_section(
@@ -73,13 +73,13 @@ function mytheme_customize_register_sns( $wp_customize ) {
 		}
 	}
 }
-add_action( 'customize_register', 'mytheme_customize_register_sns' );
+add_action( 'customize_register', 'yzrh_customize_register_sns' );
 
 /**
  * SNSアイコンを出力する
- * 好きなテンプレートで <?php mytheme_output_sns_icons(); ?> と呼び出す
+ * 好きなテンプレートで <?php yzrh_output_sns_icons(); ?> と呼び出す
  */
-function mytheme_output_sns_icons() {
+function yzrh_output_sns_icons() {
 
 	$sns_list = array(
 		'line'      => array( 'label' => 'LINE',      'icon_class' => 'icon-line' ),

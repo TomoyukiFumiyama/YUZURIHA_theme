@@ -6,8 +6,8 @@ if ( ! defined( 'ABSPATH' ) ) {
         exit;
 }
 
-if ( ! function_exists( 'mytheme_structured_data_schema_article' ) ) {
-        function mytheme_structured_data_schema_article() {
+if ( ! function_exists( 'yzrh_structured_data_schema_article' ) ) {
+        function yzrh_structured_data_schema_article() {
                 if ( ! is_singular( 'post' ) ) {
                         return null;
                 }
@@ -25,12 +25,12 @@ if ( ! function_exists( 'mytheme_structured_data_schema_article' ) ) {
                                 '@type' => 'WebPage',
                                 '@id'   => $permalink,
                         ),
-                        'headline'         => get_the_title( $post_id ),
-                        'description'      => MyTheme_Structured_Data_Generator::get_post_description( $post_id ),
+                        'headline'         => YZRH_Structured_Data_Generator::sanitize_text( get_the_title( $post_id ) ),
+                        'description'      => YZRH_Structured_Data_Generator::get_post_description( $post_id ),
                         'datePublished'    => get_the_date( DATE_W3C, $post_id ),
                         'dateModified'     => get_the_modified_date( DATE_W3C, $post_id ),
-                        'author'           => MyTheme_Structured_Data_Generator::get_author_schema( $post_id ),
-                        'publisher'        => MyTheme_Structured_Data_Generator::get_publisher_schema(),
+                        'author'           => YZRH_Structured_Data_Generator::get_author_schema( $post_id ),
+                        'publisher'        => YZRH_Structured_Data_Generator::get_publisher_schema(),
                         'url'              => $permalink,
                         'isPartOf'         => array(
                                 '@type' => 'Blog',
@@ -39,16 +39,16 @@ if ( ! function_exists( 'mytheme_structured_data_schema_article' ) ) {
                         ),
                 );
 
-                $primary_category = MyTheme_Structured_Data_Generator::get_primary_category( $post_id );
+                $primary_category = YZRH_Structured_Data_Generator::get_primary_category( $post_id );
                 if ( $primary_category ) {
                         $schema['articleSection'] = $primary_category->name;
                 }
 
-                $image = MyTheme_Structured_Data_Generator::get_post_image_object( $post_id );
+                $image = YZRH_Structured_Data_Generator::get_post_image_object( $post_id );
                 if ( $image ) {
                         $schema['image'] = $image;
                 }
 
-                return apply_filters( 'mytheme_structured_data_article', $schema, $post_id );
+                return apply_filters( 'yzrh_structured_data_article', $schema, $post_id );
         }
 }
