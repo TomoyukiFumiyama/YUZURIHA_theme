@@ -42,6 +42,8 @@ WordPress オリジナルテーマのベース実装です。
   - `schema-blog.php`: `ItemList` / `Blog`
   - `schema-author.php`: `Person`
   - `jsonld-functions.php`: 互換用の公開関数 (`yzrh_output_jsonld()` など)
+- `features/core/settings/`  
+  機能共通で使う設定デフォルト値と設定取得ヘルパー。
 - `features/security/`  
   セキュリティ関連機能の初期化・実装。
 - `features/customizer/`  
@@ -60,10 +62,6 @@ WordPress オリジナルテーマのベース実装です。
 - `css/` ページ・部位ごとのスタイル
 - `js/` フロント側スクリプト
 - `fonts/` テーマ同梱フォント
-
-### `classes/data/`
-
-- テーマで使うデータ定義、初期値、共通配列の保持場所。
 
 ---
 

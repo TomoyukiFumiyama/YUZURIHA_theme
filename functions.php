@@ -99,6 +99,9 @@ function yzrh_widgets_init() {
 }
 add_action( 'widgets_init', 'yzrh_widgets_init' );
 
+// Core settings used by feature modules.
+require_once get_template_directory() . '/features/core/settings/init.php';
+
 // Structured data (JSON-LD) output.
 require_once get_template_directory() . '/features/seo/structured-data/init.php';
 
