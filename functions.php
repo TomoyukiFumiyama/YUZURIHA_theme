@@ -77,9 +77,34 @@ function yzrh_enqueue_assets() {
                 wp_enqueue_style( 'yzrh-job-details', get_template_directory_uri() . '/css/job-details.css', array(), $current_time );
         } else if (is_page("thanks")) {
                 wp_enqueue_style( 'yzrh-master', get_template_directory_uri() . '/assets/css/master.css', array(), $current_time );
+        } else if (is_singular('interview')) {
+                wp_enqueue_style( 'yzrh-interview', get_template_directory_uri() . '/css/interview.css', array(), $current_time );
+        } else if (is_post_type_archive('interview')) {
+                wp_enqueue_style( 'yzrh-interview-archive', get_template_directory_uri() . '/css/interview-archive.css', array(), $current_time );
         }
 }
 add_action( 'wp_enqueue_scripts', 'yzrh_enqueue_assets' );
+
+
+/**
+ * Applies archive ordering for interview list requests.
+ *
+ * @param WP_Query $query Query object.
+ */
+function yzrh_interview_archive_ordering( $query ) {
+	if ( is_admin() || ! $query->is_main_query() || ! $query->is_post_type_archive( 'interview' ) ) {
+		return;
+	}
+
+	$order = isset( $_GET['order'] ) ? strtoupper( sanitize_key( wp_unslash( $_GET['order'] ) ) ) : 'DESC'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	if ( ! in_array( $order, array( 'ASC', 'DESC' ), true ) ) {
+		$order = 'DESC';
+	}
+
+	$query->set( 'orderby', 'date' );
+	$query->set( 'order', $order );
+}
+add_action( 'pre_get_posts', 'yzrh_interview_archive_ordering' );
 
 /**
  * ウィジェットエリア（サイドバー）を登録します。
@@ -108,3 +133,117 @@ require_once get_template_directory() . '/features/seo/structured-data/init.php'
 // Security hardening helpers.
 require_once get_template_directory() . '/features/security/init.php';
 
+
+/**
+ * Interview article custom blocks.
+ */
+function yzrh_register_interview_blocks() {
+	$theme_version = wp_get_theme()->get( 'Version' );
+	$script_path   = get_template_directory() . '/js/interview-blocks.js';
+	$style_path    = get_template_directory() . '/css/interview.css';
+	$script_ver    = file_exists( $script_path ) ? filemtime( $script_path ) : $theme_version;
+	$style_ver     = file_exists( $style_path ) ? filemtime( $style_path ) : $theme_version;
+
+	wp_register_style(
+		'yzrh-interview-blocks',
+		get_template_directory_uri() . '/css/interview.css',
+		array(),
+		$style_ver
+	);
+
+	wp_register_script(
+		'yzrh-interview-blocks',
+		get_template_directory_uri() . '/js/interview-blocks.js',
+		array( 'wp-blocks', 'wp-block-editor', 'wp-components', 'wp-element', 'wp-i18n' ),
+		$script_ver,
+		true
+	);
+
+	register_block_type(
+		'yzrh/interview-speech',
+		array(
+			'api_version'     => 2,
+			'editor_script'   => 'yzrh-interview-blocks',
+			'editor_style'    => 'yzrh-interview-blocks',
+			'render_callback' => 'yzrh_render_interview_speech_block',
+			'attributes'      => array(
+				'content'         => array( 'type' => 'string', 'default' => '' ),
+				'speakerInitials' => array( 'type' => 'string', 'default' => 'S' ),
+				'speakerTag'      => array( 'type' => 'string', 'default' => 'interviewer' ),
+				'alignment'       => array( 'type' => 'string', 'default' => 'left' ),
+				'tone'            => array( 'type' => 'string', 'default' => 'question' ),
+				'speakerStyle'    => array( 'type' => 'string', 'default' => 'host' ),
+			),
+		)
+	);
+
+	register_block_type(
+		'yzrh/interview-pullquote',
+		array(
+			'api_version'     => 2,
+			'editor_script'   => 'yzrh-interview-blocks',
+			'editor_style'    => 'yzrh-interview-blocks',
+			'render_callback' => 'yzrh_render_interview_pullquote_block',
+			'attributes'      => array(
+				'quote'       => array( 'type' => 'string', 'default' => '' ),
+				'attribution' => array( 'type' => 'string', 'default' => '' ),
+			),
+		)
+	);
+}
+add_action( 'init', 'yzrh_register_interview_blocks' );
+
+function yzrh_render_interview_speech_block( $attributes ) {
+	$content          = isset( $attributes['content'] ) ? wp_kses_post( $attributes['content'] ) : '';
+	$speaker_initials = isset( $attributes['speakerInitials'] ) ? sanitize_text_field( $attributes['speakerInitials'] ) : '';
+	$speaker_tag      = isset( $attributes['speakerTag'] ) ? sanitize_text_field( $attributes['speakerTag'] ) : '';
+	$alignment        = isset( $attributes['alignment'] ) && 'right' === $attributes['alignment'] ? 'right' : 'left';
+	$tone             = isset( $attributes['tone'] ) && 'answer' === $attributes['tone'] ? 'answer' : 'question';
+	$speaker_style    = isset( $attributes['speakerStyle'] ) ? sanitize_html_class( $attributes['speakerStyle'] ) : 'host';
+
+	$row_classes = array( 'wp-block-yzrh-interview-speech', 'yzrh-interview-bubble-row' );
+	if ( 'right' === $alignment ) {
+		$row_classes[] = 'is-right';
+	}
+
+	$bubble_classes = array( 'yzrh-interview-bubble', 'is-' . $tone );
+	if ( 'guest-b' === $speaker_style ) {
+		$bubble_classes[] = 'is-guest-b';
+	}
+
+	$speaker_classes = array( 'yzrh-interview-speaker', 'is-' . $speaker_style );
+
+	ob_start();
+	?>
+	<div class="<?php echo esc_attr( implode( ' ', $row_classes ) ); ?>">
+		<div class="<?php echo esc_attr( implode( ' ', $speaker_classes ) ); ?>">
+			<?php echo esc_html( $speaker_initials ); ?>
+			<?php if ( $speaker_tag ) : ?>
+				<div class="yzrh-interview-speaker__tag"><?php echo esc_html( $speaker_tag ); ?></div>
+			<?php endif; ?>
+		</div>
+		<div class="<?php echo esc_attr( implode( ' ', $bubble_classes ) ); ?>">
+			<?php echo $content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+		</div>
+	</div>
+	<?php
+	return ob_get_clean();
+}
+
+function yzrh_render_interview_pullquote_block( $attributes ) {
+	$quote       = isset( $attributes['quote'] ) ? wp_kses_post( $attributes['quote'] ) : '';
+	$attribution = isset( $attributes['attribution'] ) ? sanitize_text_field( $attributes['attribution'] ) : '';
+
+	ob_start();
+	?>
+	<aside class="wp-block-yzrh-interview-pullquote yzrh-interview-pullquote">
+		<?php if ( $quote ) : ?>
+			<p class="yzrh-interview-pullquote__text"><?php echo $quote; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></p>
+		<?php endif; ?>
+		<?php if ( $attribution ) : ?>
+			<div class="yzrh-interview-pullquote__attr"><?php echo esc_html( $attribution ); ?></div>
+		<?php endif; ?>
+	</aside>
+	<?php
+	return ob_get_clean();
+}

@@ -34,6 +34,22 @@ if ( ! function_exists( 'yzrh_structured_data_schema_breadcrumbs' ) ) {
                                 'name'     => $posts_page_id ? get_the_title( $posts_page_id ) : __( 'Blog', 'yzrh' ),
                                 'item'     => $posts_page_id ? get_permalink( $posts_page_id ) : home_url( '/' ),
                         );
+                } elseif ( is_post_type_archive() ) {
+                        $post_type = get_query_var( 'post_type' );
+                        if ( is_array( $post_type ) ) {
+                                $post_type = reset( $post_type );
+                        }
+
+                        $post_type_object = $post_type ? get_post_type_object( $post_type ) : null;
+                        if ( $post_type_object ) {
+                                $archive_link = get_post_type_archive_link( $post_type );
+                                $items[]      = array(
+                                        '@type'    => 'ListItem',
+                                        'position' => $position++,
+                                        'name'     => $post_type_object->labels->name,
+                                        'item'     => $archive_link ? $archive_link : home_url( '/' ),
+                                );
+                        }
                 } elseif ( is_singular() ) {
                         $post_id = get_queried_object_id();
 
