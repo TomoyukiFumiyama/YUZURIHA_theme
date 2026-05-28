@@ -49,6 +49,16 @@ if (! function_exists( 'yzrh_setup' ) ) :
 endif;
 add_action( 'after_setup_theme', 'yzrh_setup' );
 
+
+function yzrh_enqueue_style_if_exists( $handle, $relative_path, $deps = array(), $version = null ) {
+	$absolute_path = get_template_directory() . $relative_path;
+	if ( ! file_exists( $absolute_path ) ) {
+		return;
+	}
+
+	wp_enqueue_style( $handle, get_template_directory_uri() . $relative_path, $deps, $version );
+}
+
 function yzrh_enqueue_assets() {
 	// キャッシュクリア用
 	$current_time = date('YmdHis');
@@ -65,18 +75,22 @@ function yzrh_enqueue_assets() {
 
 	// 条件分岐によるスタイルの読み込み（ここは構成によって変えてください。）
 	if (is_front_page()) {
-		wp_enqueue_style( 'yzrh-master', get_template_directory_uri() . '/assets/css/master.css', array(), $current_time );
-		wp_enqueue_style( 'yzrh-front-page', get_template_directory_uri() . '/assets/css/front-page.css', array( 'yzrh-master' ), $current_time );
+		$master_dep = array();
+		yzrh_enqueue_style_if_exists( 'yzrh-master', '/assets/css/master.css', array(), $current_time );
+		if ( file_exists( get_template_directory() . '/assets/css/master.css' ) ) {
+			$master_dep = array( 'yzrh-master' );
+		}
+		yzrh_enqueue_style_if_exists( 'yzrh-front-page', '/assets/css/front-page.css', $master_dep, $current_time );
 	} elseif (is_post_type_archive('members')) {
-		wp_enqueue_style( 'yzrh-master', get_template_directory_uri() . '/assets/css/master.css', array(), $current_time );
-		wp_enqueue_style( 'yzrh-archive-members', get_template_directory_uri() . '/assets/css/archive-members.css', array(), $current_time );
+		yzrh_enqueue_style_if_exists( 'yzrh-master', '/assets/css/master.css', array(), $current_time );
+		yzrh_enqueue_style_if_exists( 'yzrh-archive-members', '/assets/css/archive-members.css', array(), $current_time );
         } else if (is_page('company')) {
-                wp_enqueue_style( 'yzrh-master', get_template_directory_uri() . '/assets/css/master.css', array(), $current_time );
-                wp_enqueue_style( 'yzrh-company', get_template_directory_uri() . '/assets/css/page-company.css', array(), $current_time );
+                yzrh_enqueue_style_if_exists( 'yzrh-master', '/assets/css/master.css', array(), $current_time );
+                yzrh_enqueue_style_if_exists( 'yzrh-company', '/assets/css/page-company.css', array(), $current_time );
         } else if (is_page_template('job-details.php')) {
                 wp_enqueue_style( 'yzrh-job-details', get_template_directory_uri() . '/css/job-details.css', array(), $current_time );
         } else if (is_page("thanks")) {
-                wp_enqueue_style( 'yzrh-master', get_template_directory_uri() . '/assets/css/master.css', array(), $current_time );
+                yzrh_enqueue_style_if_exists( 'yzrh-master', '/assets/css/master.css', array(), $current_time );
         } else if (is_singular('interview')) {
                 wp_enqueue_style( 'yzrh-interview', get_template_directory_uri() . '/css/interview.css', array(), $current_time );
         } else if (is_post_type_archive('interview')) {

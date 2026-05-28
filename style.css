@@ -1,0 +1,16 @@
+/*
+Theme Name: YUZURIHA Theme
+Theme URI: https://example.com/yuzuriha-theme
+Author: YUZURIHA
+Description: Custom WordPress theme for YUZURIHA site.
+Version: 1.0.0
+Requires at least: 5.8
+Tested up to: 6.6
+Requires PHP: 7.0
+Text Domain: yzrh
+*/
+
+/*
+ * WordPress テーマ認識用の最小 style.css。
+ * 実際のスタイルは /css/style.css を読み込みます。
+ */
