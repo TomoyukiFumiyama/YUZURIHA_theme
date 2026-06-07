@@ -110,7 +110,7 @@ class YZRH_Security_Hardening {
      * @return array<string, string>
      */
     protected static function get_default_security_headers() {
-        return array(
+        $headers = array(
             'Strict-Transport-Security'         => 'max-age=63072000; includeSubDomains; preload',
             'X-Frame-Options'                   => 'SAMEORIGIN',
             'X-Content-Type-Options'            => 'nosniff',
@@ -119,5 +119,30 @@ class YZRH_Security_Hardening {
             'Referrer-Policy'                   => 'strict-origin-when-cross-origin',
             'Permissions-Policy'                => "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()",
         );
+
+        if ( self::should_skip_content_security_policy() ) {
+            unset( $headers['Content-Security-Policy'] );
+        }
+
+        return $headers;
+    }
+
+    /**
+     * Determine whether the theme should avoid sending its CSP header.
+     *
+     * WordPress admin and authentication screens intentionally output inline
+     * scripts, inline styles, data fonts, and dynamic editor styles. A strict
+     * frontend-oriented CSP would block those core assets and break editing.
+     *
+     * @return bool
+     */
+    protected static function should_skip_content_security_policy() {
+        if ( is_admin() || wp_doing_ajax() || wp_doing_cron() ) {
+            return true;
+        }
+
+        $pagenow = isset( $GLOBALS['pagenow'] ) ? $GLOBALS['pagenow'] : '';
+
+        return in_array( $pagenow, array( 'wp-login.php', 'wp-register.php' ), true );
     }
 }
