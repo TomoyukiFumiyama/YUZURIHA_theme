@@ -96,11 +96,6 @@ class YZRH_Security_Hardening {
 
 		$headers = apply_filters( 'yzrh_security_headers', self::get_default_security_headers() );
 
-		// Keep wp-admin/wp-login compatible by excluding CSP only on admin-side requests.
-		if ( self::is_admin_or_login_request() && isset( $headers['Content-Security-Policy'] ) ) {
-			unset( $headers['Content-Security-Policy'] );
-		}
-
 		if ( empty( $headers ) || ! is_array( $headers ) ) {
 			return;
 		}
@@ -114,16 +109,6 @@ class YZRH_Security_Hardening {
 		}
 	}
 
-	/**
-	 * Check whether current request targets admin area or login screen.
-	 *
-	 * @return bool
-	 */
-	protected static function is_admin_or_login_request() {
-		global $pagenow;
-
-		return is_admin() || 'wp-login.php' === $pagenow;
-	}
 
 	/**
 	 * Default security header map used by {@see self::send_security_headers()}.
@@ -135,7 +120,6 @@ class YZRH_Security_Hardening {
 			'Strict-Transport-Security'         => 'max-age=63072000; includeSubDomains; preload',
 			'X-Frame-Options'                   => 'SAMEORIGIN',
 			'X-Content-Type-Options'            => 'nosniff',
-			'Content-Security-Policy' => "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com; script-src-elem 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://secure.gravatar.com https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net; worker-src 'self' blob:; frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self';",
 			'X-Permitted-Cross-Domain-Policies' => 'none',
 			'Referrer-Policy'                   => 'strict-origin-when-cross-origin',
 			'Permissions-Policy'                => 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',

@@ -103,3 +103,13 @@ WordPress オリジナルテーマのベース実装です。
 ```php
 <?php yzrh_output_sns_icons(); ?>
 ```
+
+## 外部ファイル読み込み時のセキュリティ方針
+
+このテーマでは、Google アナリティクス、Swiper、各種 CDN などを追加するたびに許可ドメインの更新が必要になるため、テーマ側から `Content-Security-Policy` ヘッダーは送信しません。代わりに、外部ファイルを追加する際は次の運用で安全性を確保します。
+
+- 可能な限り、外部ライブラリはテーマ内に同梱して `wp_enqueue_script()` / `wp_enqueue_style()` から読み込みます。
+- CDN を使う場合は、信頼できる公式配布元を選び、可能であれば Subresource Integrity (SRI) の `integrity` 属性と `crossorigin` 属性を付与します。
+- Google アナリティクスやタグマネージャーなどの計測タグは、管理者が把握できる 1 箇所に集約して追加します。
+- 入力値のエスケープ、XML-RPC / pingback 抑止、クリックジャッキング対策、MIME sniffing 抑止、リファラーポリシーなど、CSP 以外の軽量なセキュリティヘッダーは `features/security/` で継続します。
+- より厳密な CSP が必要な環境では、テーマではなくサーバー / CDN / セキュリティプラグイン側で、運用中の外部サービス一覧に合わせて一元管理します。
