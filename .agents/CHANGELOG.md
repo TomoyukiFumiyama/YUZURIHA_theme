@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-10-16
+
+- 固定ページ用カスタムテンプレートのディレクトリを `templates/` から `page-templates/` に改名し、Job Details テンプレート判定と README を追従。
+
 ## 2026-09-07
 
 - 投稿一覧カードを `template-parts/post-list-item.php` に集約し、ブログ一覧とアーカイブで再利用。
