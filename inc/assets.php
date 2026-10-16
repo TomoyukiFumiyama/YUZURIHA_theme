@@ -43,7 +43,7 @@ function yzrh_enqueue_assets() {
         } else if (is_page('company')) {
                 yzrh_enqueue_style_if_exists( 'yzrh-master', '/assets/css/master.css', array(), $current_time );
                 yzrh_enqueue_style_if_exists( 'yzrh-company', '/assets/css/page-company.css', array(), $current_time );
-        } else if (is_page_template('templates/job-details.php')) {
+        } else if (is_page_template('page-templates/job-details.php')) {
                 wp_enqueue_style( 'yzrh-job-details', get_template_directory_uri() . '/css/page/job-details.css', array(), $current_time );
         } else if (is_page("thanks")) {
                 yzrh_enqueue_style_if_exists( 'yzrh-master', '/assets/css/master.css', array(), $current_time );

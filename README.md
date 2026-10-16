@@ -19,7 +19,7 @@ WordPress 標準 API を尊重した、拡張可能なオリジナルテーマ�
 
 CSS は `css/header.css`、`css/footer.css`、`css/reset.min.css`、`css/style.css` を共通のまま維持し、ページ固有 CSS を `css/page/`、複数ページで再利用する部品を `css/component/` に配置します。
 
-再利用する表示部品は、役割が分かる名前で `template-parts/` に配置します。固定ページ用のカスタムテンプレートは `templates/` に配置し、ファイル先頭の `Template Name` を固定ページ編集画面から選択して利用します。ファイル名に `page-` 接頭辞を付けて WordPress のスラッグ別テンプレート階層へ自動適用させないため、テンプレートの割り当ては管理画面上で明示的に管理できます。
+再利用する表示部品は、役割が分かる名前で `template-parts/` に配置します。固定ページ用のカスタムテンプレートは `page-templates/` に配置し、ファイル先頭の `Template Name` を固定ページ編集画面から選択して利用します。ファイル名に `page-` 接頭辞を付けて WordPress のスラッグ別テンプレート階層へ自動適用させないため、テンプレートの割り当ては管理画面上で明示的に管理できます。
 
 ## SEO 基本機能
 
