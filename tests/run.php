@@ -563,6 +563,23 @@ test( 'CollectionPage no longer carries a second BreadcrumbList', function () {
 	assert_same( 'CollectionPage', $schema['@type'] );
 } );
 
+test( 'CollectionPage description comes from the archive description and is omitted when empty', function () {
+	$GLOBALS['yzrh_test']['conditionals'] = array( 'is_post_type_archive' );
+	yzrh_test_list_query( array( new WP_Post( 1, 'interview' ) ), array( 'paged' => 1, 'posts_per_page' => 10 ) );
+
+	$schema = yzrh_structured_data_schema_interview_collection();
+	assert_same( false, array_key_exists( 'description', $schema ), 'no description without an archive description' );
+
+	$GLOBALS['yzrh_test']['archive_description'] = '<p>Talks &amp; essays</p>';
+	$schema = yzrh_structured_data_schema_interview_collection();
+	assert_same( 'Talks & essays', $schema['description'] );
+	assert_same( 'Talks &amp; essays', yzrh_interview_archive_description(), 'the template helper returns the same source text' );
+
+	foreach ( array( 'inc/seo.php', 'archive-interview.php' ) as $file ) {
+		assert_not_contains( 'マーケティング、デザイン', file_get_contents( YZRH_THEME_DIR . '/' . $file ), $file . ' must not carry project-specific copy' );
+	}
+} );
+
 test( 'ListItem positions have no gaps when other post types are skipped', function () {
 	$GLOBALS['yzrh_test']['conditionals'] = array( 'is_category' );
 	yzrh_test_list_query(

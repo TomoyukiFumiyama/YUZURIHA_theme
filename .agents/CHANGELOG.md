@@ -2,6 +2,7 @@
 
 ## 2026-10-18
 
+- インタビュー一覧の CollectionPage JSON-LD から、固定の日本語説明文（マーケティング／デザイン等）を削除。説明文はメタディスクリプション・リードと同じ `yzrh_interview_archive_description()` から取得し、空の場合は `description` を省略する。ヘルパーはテンプレートから `inc/helpers.php` へ移動。
 - PR #14 のレビュー対応: インタビュー一覧のトップバーで、`wp_nav_menu()` の現在項目（`aria-current="page"`、`current-menu-item` / `current_page_item` / `current-menu-ancestor`）にも、フォールバックリンクの `.is-active` と同じ強調表示（文字色・下線）を適用。
 - PR #14 のレビュー対応: インタビュー一覧の canonical のページ番号部分を、固定の `/page/` ではなく `$wp_rewrite->pagination_base` とパーマリンク設定（`using_permalinks()`）から生成するよう修正。ページ送りのベースを変更しているサイトでも、存在する URL を指す。
 

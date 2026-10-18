@@ -722,16 +722,10 @@ if ( ! function_exists( 'yzrh_structured_data_schema_interview_collection' ) ) {
 			$archive_url = home_url( '/interviews/' );
 		}
 
-		$description = get_the_archive_description();
-		if ( ! $description ) {
-			$description = __( 'マーケティング、デザイン、開発、経営の現場で働く人々への取材記事一覧。', 'yzrh' );
-		}
-
 		$schema = array(
 			'@context'    => 'https://schema.org',
 			'@type'       => 'CollectionPage',
 			'name'        => __( 'Interviews ── 取材一覧', 'yzrh' ),
-			'description' => YZRH_Structured_Data_Generator::sanitize_text( $description ),
 			'url'         => $archive_url,
 			'inLanguage'  => get_bloginfo( 'language' ),
 			'isPartOf'    => array(
@@ -740,6 +734,12 @@ if ( ! function_exists( 'yzrh_structured_data_schema_interview_collection' ) ) {
 				'url'   => home_url( '/' ),
 			),
 		);
+
+		// Same source as the archive's meta description and lead; omitted when empty.
+		$description = YZRH_Structured_Data_Generator::sanitize_text( yzrh_interview_archive_description() );
+		if ( '' !== $description ) {
+			$schema['description'] = $description;
+		}
 
 		global $wp_query;
 		if ( $wp_query instanceof WP_Query && ! empty( $wp_query->posts ) ) {

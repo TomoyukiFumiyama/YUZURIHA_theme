@@ -40,22 +40,6 @@ if ( ! function_exists( 'yzrh_interview_archive_taxonomy' ) ) {
 	}
 }
 
-if ( ! function_exists( 'yzrh_interview_archive_description' ) ) {
-	/**
-	 * Returns the archive lead text.
-	 *
-	 * @return string
-	 */
-	function yzrh_interview_archive_description() {
-		$description = get_the_archive_description();
-		if ( $description ) {
-			return wp_strip_all_tags( $description );
-		}
-
-		return '';
-	}
-}
-
 if ( ! function_exists( 'yzrh_interview_archive_terms' ) ) {
 	/**
 	 * Returns visible category/filter terms for the archive chips.

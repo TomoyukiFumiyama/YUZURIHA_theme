@@ -383,7 +383,7 @@ function get_the_archive_title() {
 	return 'Category: News &amp; Updates';
 }
 function get_the_archive_description() {
-	return '';
+	return isset( $GLOBALS['yzrh_test']['archive_description'] ) ? $GLOBALS['yzrh_test']['archive_description'] : '';
 }
 
 // Output-only template tags.
