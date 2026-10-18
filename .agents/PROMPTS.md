@@ -2,6 +2,13 @@
 
 このファイルは、Codex に与えられた指示・プロンプトを原文のまま保存するための記録です。
 
+## 2026-10-18（PR #15 レビュー対応）
+
+> inc/seo.phpの次の内容について修正が必要なら修正して。
+> When a child theme uses the existing class_exists() extension point to replace YZRH_Structured_Data_Generator, an implementation written against the previous public API will not have get_blog_url(). This new unconditional call then causes a fatal Call to undefined method on single posts; the other added calls similarly break blog listings and home breadcrumbs. Keep this helper outside the replaceable class or provide a compatibility fallback before invoking it.
+>
+> When Yoast, Rank Math, AIOSEO, or SEOPress is active but its Open Graph/social metadata feature is disabled, the plugin's version constant remains defined even though it emits no OGP tags. This default therefore suppresses the theme output too, leaving every page without Open Graph metadata and regressing social previews unless an administrator adds PHP code for the new filter; plugin presence alone should not be treated as proof that it owns OGP output.
+
 ## 2026-10-18（inc/ と functions.php へのコメント付与）
 
 > inc/内の各ファイルとfunctions.phpについて、各関数が何をしているか、なぜあるのかについて日本語でコメントをつけてください。コメントをつける中で修正点を見つけたら修正して。

@@ -4,10 +4,12 @@
 
 - `functions.php` と `inc/` の全ファイルに、各関数が「何をしているか」「なぜあるか」を説明する日本語コメントを追加。`inc/seo.php` と `inc/assets.php` のインデントをタブに統一。
 - `og:locale` を `ja-JP`（ハイフン）から OGP の仕様どおりの `ja_JP`（`get_locale()` の値そのまま）に修正。
-- 主要な SEO プラグイン（Yoast SEO / Rank Math / AIOSEO / SEOPress）が有効なとき、テーマの OGP を出力しないよう変更（プラグインの OGP との二重出力を防止）。判定を `yzrh_is_seo_plugin_active()` に共通化し、`yzrh_output_ogp` フィルターで出力の有無を変更可能にした。
+- PR #15 のレビュー対応: テーマの OGP を出さない条件を「SEO プラグインが有効か」から「`wp_head` に実際に OGP が出力されたか」に変更。`wp_head` の出力をバッファに取り（`yzrh_start_ogp_detection()`、優先度 -9999）、最後（`yzrh_output_ogp()`、優先度 9999）に `og:` の `<meta>` がなければテーマの OGP を出力する。プラグインの OGP 機能を無効にしているサイトで OGP が消えないようにするため。`yzrh_output_ogp` フィルターで出力の有無を変更できる。出力の優先度が 4 から 9999 に変わったため、止める場合は `remove_action()` ではなくフィルターを使う。
+- PR #15 のレビュー対応: `get_blog_url()` を差し替え可能なクラス `YZRH_Structured_Data_Generator` から外し、関数 `yzrh_get_blog_url()` に変更。子テーマが以前の API でクラスを差し替えていても、未定義メソッドの致命的エラーにならないようにするため。クラスの外から呼ぶメソッドが以前の公開 API だけであることを確認するテストを追加。
+- canonical の出力判定（主要な SEO プラグインが有効なら出力しない）を `yzrh_is_seo_plugin_active()` に共通化。
 - `BreadcrumbList` を、HTML のパンくずと同じくトップページだけ（1 項目）のときは出力しないよう修正。
 - パンくずの検索結果名で、エスケープ済みの `get_search_query()` ではなく生の値（`get_search_query( false )`）を使うよう修正。カスタム投稿アーカイブで URL が取得できない場合に空 URL の項目を作らないよう修正。
-- `BlogPosting.isPartOf`（Blog）の `url` が常にトップページになっていたのを、`Blog` スキーマと同じ `get_blog_url()`（投稿ページ設定を反映）に統一。
+- `BlogPosting.isPartOf`（Blog）の `url` が常にトップページになっていたのを、`Blog` スキーマと同じ `yzrh_get_blog_url()`（投稿ページ設定を反映）に統一。
 - `BlogPosting` で著者が取得できない場合に `"author": []` を出力しないよう修正。
 - ロゴ・アイキャッチの `ImageObject` を `get_attachment_image_object()` に共通化し、幅・高さが取得できない画像（SVG など）で `null` / `0` を出力せず省略するよう修正。
 - 著者の `sameAs` 収集で、文字列以外のユーザーメタ値を読み飛ばすよう修正（PHP 8 での致命的エラー防止）。
@@ -15,7 +17,7 @@
 - SNS の一覧を `yzrh_get_sns_services()` に集約し、カスタマイザーと出力関数の二重管理を解消。`mailto:` のお問い合わせリンクには `target="_blank"` を付けないよう変更。カスタマイザーの説明文の改行が表示されていなかったのを `<br>` に修正。
 - アセットのバージョンのフォールバックで、子テーマ使用時も親テーマ（本テーマ）の Version を使うよう `wp_get_theme( get_template() )` に修正。
 - インタビュー吹き出しブロックで、`speakerStyle` がサニタイズ後に空になった場合に `is-` だけのクラスを出力しないよう修正。
-- 上記の回帰テストを `tests/run.php` に追加（63 件）。
+- 上記の回帰テストを `tests/run.php` に追加（66 件）。
 - インタビュー一覧の CollectionPage JSON-LD から、固定の日本語説明文（マーケティング／デザイン等）を削除。説明文はメタディスクリプション・リードと同じ `yzrh_interview_archive_description()` から取得し、空の場合は `description` を省略する。ヘルパーはテンプレートから `inc/helpers.php` へ移動。
 - PR #14 のレビュー対応: インタビュー一覧のトップバーで、`wp_nav_menu()` の現在項目（`aria-current="page"`、`current-menu-item` / `current_page_item` / `current-menu-ancestor`）にも、フォールバックリンクの `.is-active` と同じ強調表示（文字色・下線）を適用。
 - PR #14 のレビュー対応: インタビュー一覧の canonical のページ番号部分を、固定の `/page/` ではなく `$wp_rewrite->pagination_base` とパーマリンク設定（`using_permalinks()`）から生成するよう修正。ページ送りのベースを変更しているサイトでも、存在する URL を指す。

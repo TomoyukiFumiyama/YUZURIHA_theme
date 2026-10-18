@@ -952,17 +952,78 @@ test( 'og:locale keeps the OGP language_TERRITORY format', function () {
 	assert_same( 'ja_JP', yzrh_get_ogp_tags()['og:locale'] );
 } );
 
-test( 'OGP output can be turned off like the archive canonical', function () {
+test( 'OGP output can be turned off with yzrh_output_ogp', function () {
 	$GLOBALS['yzrh_test']['conditionals'] = array( 'is_home' );
 	$GLOBALS['wp']                        = (object) array( 'request' => '' );
 	ob_start();
 	yzrh_output_ogp();
-	assert_contains( 'og:site_name', ob_get_clean(), 'printed by default (no SEO plugin)' );
+	assert_contains( 'og:site_name', ob_get_clean(), 'printed by default' );
 
 	add_filter( 'yzrh_output_ogp', '__return_false' );
 	ob_start();
 	yzrh_output_ogp();
 	assert_same( '', ob_get_clean() );
+} );
+
+test( 'theme OGP is skipped only when wp_head already printed Open Graph tags', function () {
+	$GLOBALS['yzrh_test']['conditionals'] = array( 'is_home' );
+	$GLOBALS['wp']                        = (object) array( 'request' => '' );
+
+	// An SEO plugin that prints its own OGP in wp_head: the theme adds nothing.
+	ob_start();
+	yzrh_start_ogp_detection();
+	echo "<meta property=\"og:title\" content=\"Plugin\">\n";
+	yzrh_output_ogp();
+	$html = ob_get_clean();
+	assert_contains( '<meta property="og:title" content="Plugin">', $html, 'plugin output is kept' );
+	assert_not_contains( 'og:site_name', $html );
+
+	// An SEO plugin with its OGP feature disabled (only other head tags): the theme prints OGP.
+	ob_start();
+	yzrh_start_ogp_detection();
+	echo "<meta name=\"description\" content=\"x\">\n";
+	yzrh_output_ogp();
+	$html = ob_get_clean();
+	assert_contains( '<meta name="description" content="x">', $html );
+	assert_contains( 'og:site_name', $html );
+
+	assert_same( true, yzrh_has_ogp_markup( "<meta content='x' property='og:image'>" ) );
+	assert_same( false, yzrh_has_ogp_markup( '<meta name="twitter:card" content="summary">' ) );
+} );
+
+test( 'OGP detection leaves output buffers alone when their nesting changed', function () {
+	$GLOBALS['yzrh_test']['conditionals'] = array( 'is_home' );
+	$GLOBALS['wp']                        = (object) array( 'request' => '' );
+	$base = ob_get_level();
+	ob_start();
+	yzrh_start_ogp_detection();
+	ob_start(); // A callback that opened a buffer and never closed it.
+	echo '<meta property="og:title" content="Plugin">';
+	yzrh_output_ogp();
+	assert_same( $base + 3, ob_get_level(), 'no buffer closed by the theme' );
+	$html = ob_get_clean() . ob_get_clean();
+	$html = ob_get_clean() . $html;
+	assert_contains( 'og:site_name', $html, 'falls back to printing the theme OGP' );
+} );
+
+test( 'code outside YZRH_Structured_Data_Generator only uses its original public API', function () {
+	// The class can be replaced by a child theme (class_exists()); a replacement written against
+	// the earlier API must keep working, so new shared helpers live outside the class.
+	$original_api = array(
+		'get_author_schema', 'get_item_list_order', 'get_list_start_offset', 'get_logo_object',
+		'get_post_description', 'get_post_image_object', 'get_primary_category', 'get_publisher_schema',
+		'is_blog_listing_context', 'is_service_page', 'register_schema', 'render', 'sanitize_text',
+	);
+	$files = array_merge( glob( YZRH_THEME_DIR . '/*.php' ), glob( YZRH_THEME_DIR . '/inc/*.php' ), glob( YZRH_THEME_DIR . '/*/*.php' ) );
+	foreach ( $files as $file ) {
+		if ( false !== strpos( $file, '/tests/' ) ) {
+			continue;
+		}
+		preg_match_all( '/YZRH_Structured_Data_Generator::([A-Za-z_]+)\s*\(/', file_get_contents( $file ), $m );
+		foreach ( $m[1] as $method ) {
+			assert_same( true, in_array( $method, $original_api, true ), basename( $file ) . ' calls ' . $method . '()' );
+		}
+	}
 } );
 
 test( 'BreadcrumbList is omitted when the trail has only the home item, like the HTML breadcrumb', function () {
@@ -987,13 +1048,13 @@ test( 'ImageObject omits unknown width and height instead of printing null or 0'
 } );
 
 test( 'Blog url is shared by the Blog schema and BlogPosting isPartOf', function () {
-	assert_same( 'https://example.test/', YZRH_Structured_Data_Generator::get_blog_url(), 'front page lists posts' );
+	assert_same( 'https://example.test/', yzrh_get_blog_url(), 'front page lists posts' );
 	$GLOBALS['yzrh_test']['options'] = array( 'page_for_posts' => 7 );
-	assert_same( get_permalink( 7 ), YZRH_Structured_Data_Generator::get_blog_url(), 'posts page' );
+	assert_same( get_permalink( 7 ), yzrh_get_blog_url(), 'posts page' );
 
 	$GLOBALS['yzrh_test']['conditionals'] = array( 'is_home' );
-	assert_same( YZRH_Structured_Data_Generator::get_blog_url(), yzrh_structured_data_schema_blog()['url'] );
-	assert_contains( "'url'   => YZRH_Structured_Data_Generator::get_blog_url()", file_get_contents( YZRH_THEME_DIR . '/inc/seo.php' ), 'BlogPosting isPartOf' );
+	assert_same( yzrh_get_blog_url(), yzrh_structured_data_schema_blog()['url'] );
+	assert_contains( "'url'   => yzrh_get_blog_url()", file_get_contents( YZRH_THEME_DIR . '/inc/seo.php' ), 'BlogPosting isPartOf' );
 } );
 
 test( 'CollectionPage name and url match the archive heading and canonical', function () {

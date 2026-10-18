@@ -372,27 +372,6 @@ if ( ! class_exists( 'YZRH_Structured_Data_Generator' ) ) {
 		}
 
 		/**
-		 * ブログ（投稿一覧）の URL を返す。
-		 *
-		 * なぜ必要か: Blog スキーマの url と、BlogPosting の isPartOf（所属する Blog）の url を
-		 * 必ず一致させるため（AGENTS.md 3-2）。「投稿ページ」が設定されていればそのページ、
-		 * なければトップページが投稿一覧になる。
-		 *
-		 * @return string
-		 */
-		public static function get_blog_url() {
-			$posts_page_id = (int) get_option( 'page_for_posts' );
-			if ( $posts_page_id ) {
-				$url = get_permalink( $posts_page_id );
-				if ( $url ) {
-					return $url;
-				}
-			}
-
-			return home_url( '/' );
-		}
-
-		/**
 		 * 現在のリクエストがブログの一覧・アーカイブを表示しているかを判定する。
 		 *
 		 * Blog / ItemList スキーマの出力対象を 1 か所で決めるための判定。
@@ -488,6 +467,39 @@ if ( ! class_exists( 'YZRH_Structured_Data_Generator' ) ) {
 
 			return array_values( $profiles );
 		}
+	}
+}
+
+/*
+ * -------------------------------------------------------------------------
+ * クラス外の共通ヘルパー
+ *
+ * YZRH_Structured_Data_Generator は子テーマで丸ごと差し替えられる（class_exists() の拡張ポイント）。
+ * 差し替えたクラスが以前の公開 API で書かれていても致命的エラーにならないよう、
+ * クラスの外（スキーマ生成関数など）から呼ぶ新しい共通処理はクラスに追加せず、ここに関数として置く。
+ * -------------------------------------------------------------------------
+ */
+
+if ( ! function_exists( 'yzrh_get_blog_url' ) ) {
+	/**
+	 * ブログ（投稿一覧）の URL を返す。
+	 *
+	 * なぜ必要か: Blog スキーマの url、BlogPosting の isPartOf（所属する Blog）の url、
+	 * 投稿一覧のパンくずの URL を必ず一致させるため（AGENTS.md 3-2）。
+	 * 「投稿ページ」が設定されていればそのページ、なければトップページが投稿一覧になる。
+	 *
+	 * @return string
+	 */
+	function yzrh_get_blog_url() {
+		$posts_page_id = (int) get_option( 'page_for_posts' );
+		if ( $posts_page_id ) {
+			$url = get_permalink( $posts_page_id );
+			if ( $url ) {
+				return $url;
+			}
+		}
+
+		return home_url( '/' );
 	}
 }
 
@@ -606,7 +618,7 @@ if ( ! function_exists( 'yzrh_structured_data_schema_article' ) ) {
 			'isPartOf'         => array(
 				'@type' => 'Blog',
 				'name'  => YZRH_Structured_Data_Generator::sanitize_text( get_bloginfo( 'name' ) ),
-				'url'   => YZRH_Structured_Data_Generator::get_blog_url(),
+				'url'   => yzrh_get_blog_url(),
 			),
 		);
 
@@ -699,7 +711,7 @@ if ( ! function_exists( 'yzrh_structured_data_schema_blog' ) ) {
 			'@context'   => 'https://schema.org',
 			'@type'      => 'Blog',
 			'name'       => YZRH_Structured_Data_Generator::sanitize_text( $site_name ),
-			'url'        => YZRH_Structured_Data_Generator::get_blog_url(),
+			'url'        => yzrh_get_blog_url(),
 			'publisher'  => YZRH_Structured_Data_Generator::get_publisher_schema(),
 			'inLanguage' => get_bloginfo( 'language' ),
 		);
@@ -1054,7 +1066,7 @@ function yzrh_get_breadcrumb_items() {
 		$items[] = array( 'name' => __( 'Page not found', 'yzrh' ), 'url' => home_url( add_query_arg( array(), $GLOBALS['wp']->request ) ) );
 	} elseif ( is_home() ) {
 		$posts_page = (int) get_option( 'page_for_posts' );
-		$items[]    = array( 'name' => $posts_page ? get_the_title( $posts_page ) : __( 'Blog', 'yzrh' ), 'url' => YZRH_Structured_Data_Generator::get_blog_url() );
+		$items[]    = array( 'name' => $posts_page ? get_the_title( $posts_page ) : __( 'Blog', 'yzrh' ), 'url' => yzrh_get_blog_url() );
 	}
 
 	return apply_filters( 'yzrh_breadcrumb_items', $items );
@@ -1118,10 +1130,12 @@ function yzrh_structured_data_schema_breadcrumbs() {
  */
 
 /**
- * OGP・canonical を自前で出力する主要な SEO プラグインが有効かどうかを返す。
+ * canonical を自前で出力する主要な SEO プラグインが有効かどうかを返す。
  *
- * なぜ必要か: テーマとプラグインが同じタグを二重に出力すると、SNS や検索エンジンが
+ * なぜ必要か: テーマとプラグインが同じタグを二重に出力すると、検索エンジンが
  * どちらを使うか不定になるため。対象: Yoast SEO・Rank Math・All in One SEO・SEOPress。
+ * OGP の判定には使わない（OGP はプラグインの設定で無効にできるため、実際の出力で判定する。
+ * yzrh_output_ogp() 参照）。
  *
  * @return bool
  */
@@ -1158,13 +1172,53 @@ function yzrh_get_ogp_tags() {
 }
 
 /**
- * OGP の <meta> タグを出力する（wp_head 優先度 4）。
+ * wp_head の出力をバッファに取り始める（wp_head 優先度 -9999）。
  *
- * 主要な SEO プラグインが有効な場合は、プラグインの OGP と重複しないよう出力しない。
- * `yzrh_output_ogp` フィルターで出力の有無を変更できる。
+ * なぜ必要か: SEO プラグイン（Yoast SEO・Rank Math・AIOSEO・SEOPress・Jetpack など）が
+ * OGP を出力するかどうかは、プラグインが有効かどうかではなく各プラグインの設定やコードで決まる
+ * （有効でも OGP 機能を無効にできる）。そこで「プラグインがあるか」ではなく、
+ * wp_head に実際に OGP の <meta> が出力されたかを yzrh_output_ogp() で調べられるようにする。
+ * バッファの階層を記録しておき、途中で他のコードがバッファを開閉した場合は判定しない。
+ */
+function yzrh_start_ogp_detection() {
+	ob_start();
+	$GLOBALS['yzrh_ogp_buffer_level'] = ob_get_level();
+}
+add_action( 'wp_head', 'yzrh_start_ogp_detection', -9999 );
+
+/**
+ * HTML に OGP の <meta property="og:..."> が含まれているかどうかを返す。
+ *
+ * @param string $html 調べる HTML。
+ * @return bool
+ */
+function yzrh_has_ogp_markup( $html ) {
+	return 1 === preg_match( '/<meta\s[^>]*property\s*=\s*["\']?og:/i', (string) $html );
+}
+
+/**
+ * OGP の <meta> タグを出力する（wp_head 優先度 9999）。
+ *
+ * wp_head の他の出力がすべて終わった後に実行し、yzrh_start_ogp_detection() で取っておいた
+ * 出力をそのまま書き出してから、その中に OGP がまだなければテーマの OGP を出力する。
+ * プラグインが OGP を出していればテーマは出さないので二重にならず、プラグインの OGP 機能が
+ * 無効なら（プラグインが有効でも）テーマの OGP が出るので、SNS のプレビューが消えない。
+ *
+ * `yzrh_output_ogp` フィルターで出力の有無を変更できる（既定値は「他の OGP が見つからなかったか」）。
  */
 function yzrh_output_ogp() {
-	if ( ! apply_filters( 'yzrh_output_ogp', ! yzrh_is_seo_plugin_active() ) ) {
+	$head  = '';
+	$level = isset( $GLOBALS['yzrh_ogp_buffer_level'] ) ? (int) $GLOBALS['yzrh_ogp_buffer_level'] : 0;
+	unset( $GLOBALS['yzrh_ogp_buffer_level'] );
+
+	// 自分が開いたバッファが一番内側に残っている場合だけ取り出す。階層がずれていたら触らない
+	// （残ったバッファは WordPress が shutdown 時にまとめて出力する）。
+	if ( $level > 0 && ob_get_level() === $level ) {
+		$head = (string) ob_get_clean();
+		echo $head; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- 他のフックが出力済みの HTML をそのまま戻すだけ。
+	}
+
+	if ( ! apply_filters( 'yzrh_output_ogp', ! yzrh_has_ogp_markup( $head ) ) ) {
 		return;
 	}
 
@@ -1172,7 +1226,7 @@ function yzrh_output_ogp() {
 		printf( "<meta property=\"%s\" content=\"%s\">\n", esc_attr( $property ), esc_attr( $content ) );
 	}
 }
-add_action( 'wp_head', 'yzrh_output_ogp', 4 );
+add_action( 'wp_head', 'yzrh_output_ogp', 9999 );
 
 /**
  * インタビュー一覧の canonical URL を返す。
