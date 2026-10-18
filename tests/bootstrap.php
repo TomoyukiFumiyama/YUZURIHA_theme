@@ -187,7 +187,10 @@ function get_template_directory() {
 function get_template_directory_uri() {
 	return 'https://example.test/wp-content/themes/yzrh';
 }
-function wp_get_theme() {
+function get_template() {
+	return 'yzrh';
+}
+function wp_get_theme( $stylesheet = null ) {
 	return new class() {
 		public function get( $key ) {
 			return '1.0.0';
@@ -348,7 +351,10 @@ function wp_get_document_title() {
 	return 'Document Title';
 }
 function get_locale() {
-	return 'ja';
+	return isset( $GLOBALS['yzrh_test']['locale'] ) ? $GLOBALS['yzrh_test']['locale'] : 'ja';
+}
+function wp_get_attachment_image_src( $attachment_id, $size = 'thumbnail' ) {
+	return isset( $GLOBALS['yzrh_test']['attachments'][ $attachment_id ] ) ? $GLOBALS['yzrh_test']['attachments'][ $attachment_id ] : false;
 }
 function get_the_post_thumbnail_url( $post = null, $size = '' ) {
 	return false;
