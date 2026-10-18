@@ -51,7 +51,8 @@ add_filter( 'yzrh_use_swiper', function ( $use ) {
 - canonical は、個別ページでは WordPress コアの `rel_canonical()` に任せます。コアが canonical を出さないインタビュー一覧だけは、テーマが `?order` などのパラメータを除いたアーカイブ URL（ページ番号付き）を出力します。主要な SEO プラグイン（Yoast SEO、Rank Math、All in One SEO、SEOPress）が有効な場合は出力しません。フィルター `yzrh_output_archive_canonical` で出力の有無を、`yzrh_interview_archive_canonical` で URL を変更できます。
 - 一覧ページの `og:url` は canonical と同じ URL（末尾スラッシュなし、クエリなし）です。個別ページの `og:url` は `get_permalink()` を使います。
 - `ItemList` の `itemListOrder` は、クエリの並び順（`order` / `orderby`）から決まります（`?order=ASC` なら Ascending）。
-- `yzrh_ogp_tags` フィルターで OGP 値を案件ごとに変更できます。
+- `yzrh_ogp_tags` フィルターで OGP 値を案件ごとに変更できます。主要な SEO プラグインが有効な場合、テーマの OGP は出力しません（`yzrh_output_ogp` フィルターで変更可能）。
+- `BreadcrumbList` は、表示パンくずと同じくトップページ（1 項目だけ）では出力しません。
 - `yzrh_breadcrumb()` は固定ページ、投稿、カテゴリ、カスタム投稿、カスタムタクソノミー、検索、404 に対応します。同じ `yzrh_get_breadcrumb_items()` を `BreadcrumbList` も利用するため表示と構造化データが一致します。
 - 各主要テンプレートは一つのページ見出し (`h1`) と、記事・セクション見出し (`h2` 以下) の階層を使用します。
 - 404 テンプレートは 404 ステータスと no-cache ヘッダーを明示します。

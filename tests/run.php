@@ -941,6 +941,114 @@ test( 'emoji filter is evaluated on wp, not at file load', function () {
 	assert_same( false, isset( $GLOBALS['yzrh_test']['removed'] ), 'default keeps emoji assets' );
 } );
 
+/* -------------------------------------------------------------------------
+ * 2026-10-18: inc/ コメント付与時に見つけた不具合の回帰テスト
+ * ---------------------------------------------------------------------- */
+
+test( 'og:locale keeps the OGP language_TERRITORY format', function () {
+	$GLOBALS['yzrh_test']['locale']       = 'ja_JP';
+	$GLOBALS['yzrh_test']['conditionals'] = array( 'is_home' );
+	$GLOBALS['wp']                        = (object) array( 'request' => '' );
+	assert_same( 'ja_JP', yzrh_get_ogp_tags()['og:locale'] );
+} );
+
+test( 'OGP output can be turned off like the archive canonical', function () {
+	$GLOBALS['yzrh_test']['conditionals'] = array( 'is_home' );
+	$GLOBALS['wp']                        = (object) array( 'request' => '' );
+	ob_start();
+	yzrh_output_ogp();
+	assert_contains( 'og:site_name', ob_get_clean(), 'printed by default (no SEO plugin)' );
+
+	add_filter( 'yzrh_output_ogp', '__return_false' );
+	ob_start();
+	yzrh_output_ogp();
+	assert_same( '', ob_get_clean() );
+} );
+
+test( 'BreadcrumbList is omitted when the trail has only the home item, like the HTML breadcrumb', function () {
+	$GLOBALS['yzrh_test']['conditionals'] = array( 'is_front_page' );
+	assert_same( null, yzrh_structured_data_schema_breadcrumbs() );
+	ob_start();
+	yzrh_breadcrumb();
+	assert_same( '', ob_get_clean() );
+} );
+
+test( 'ImageObject omits unknown width and height instead of printing null or 0', function () {
+	$GLOBALS['yzrh_test']['attachments'] = array(
+		10 => array( 'https://example.test/logo.svg', 0, 0, false ),
+		11 => array( 'https://example.test/photo.jpg', 1200, 630, false ),
+	);
+	assert_same( array( '@type' => 'ImageObject', 'url' => 'https://example.test/logo.svg' ), YZRH_Structured_Data_Generator::get_attachment_image_object( 10 ) );
+	assert_same( array( '@type' => 'ImageObject', 'url' => 'https://example.test/photo.jpg', 'width' => 1200, 'height' => 630 ), YZRH_Structured_Data_Generator::get_attachment_image_object( 11 ) );
+	assert_same( null, YZRH_Structured_Data_Generator::get_attachment_image_object( 12 ) );
+
+	$GLOBALS['yzrh_test']['theme_mods'] = array( 'custom_logo' => 10 );
+	assert_same( 'https://example.test/logo.svg', YZRH_Structured_Data_Generator::get_logo_object()['url'] );
+} );
+
+test( 'Blog url is shared by the Blog schema and BlogPosting isPartOf', function () {
+	assert_same( 'https://example.test/', YZRH_Structured_Data_Generator::get_blog_url(), 'front page lists posts' );
+	$GLOBALS['yzrh_test']['options'] = array( 'page_for_posts' => 7 );
+	assert_same( get_permalink( 7 ), YZRH_Structured_Data_Generator::get_blog_url(), 'posts page' );
+
+	$GLOBALS['yzrh_test']['conditionals'] = array( 'is_home' );
+	assert_same( YZRH_Structured_Data_Generator::get_blog_url(), yzrh_structured_data_schema_blog()['url'] );
+	assert_contains( "'url'   => YZRH_Structured_Data_Generator::get_blog_url()", file_get_contents( YZRH_THEME_DIR . '/inc/seo.php' ), 'BlogPosting isPartOf' );
+} );
+
+test( 'CollectionPage name and url match the archive heading and canonical', function () {
+	$GLOBALS['yzrh_test']['conditionals'] = array( 'is_post_type_archive' );
+	$GLOBALS['yzrh_test']['options']      = array( 'permalink_structure' => '/%postname%/' );
+	$GLOBALS['yzrh_test']['query_vars']   = array( 'paged' => 2 );
+	yzrh_test_list_query( array( new WP_Post( 1, 'interview' ) ), array( 'paged' => 2, 'posts_per_page' => 10 ) );
+
+	$schema = yzrh_structured_data_schema_interview_collection();
+	assert_same( post_type_archive_title( '', false ), $schema['name'] );
+	assert_same( yzrh_get_interview_archive_canonical(), $schema['url'] );
+	assert_not_contains( '取材一覧', file_get_contents( YZRH_THEME_DIR . '/inc/seo.php' ), 'no project-specific archive name' );
+} );
+
+test( 'SNS links and customizer controls come from one list; mailto opens without a new tab', function () {
+	$GLOBALS['yzrh_test']['theme_mods'] = array(
+		'sns_x_url'       => 'https://x.example.test/a',
+		'sns_contact_url' => 'mailto:info@example.test',
+	);
+	ob_start();
+	yzrh_output_sns_icons();
+	$html = ob_get_clean();
+	assert_contains( '<a href="https://x.example.test/a" target="_blank" rel="noopener noreferrer">', $html );
+	assert_contains( '<a href="mailto:info@example.test">', $html );
+
+	$customize = new class() {
+		public $settings = array();
+		public function add_section( $id, $args ) {}
+		public function add_setting( $id, $args ) {
+			$this->settings[] = $id;
+		}
+		public function add_control( $id, $args ) {}
+	};
+	yzrh_customize_register_sns( $customize );
+	$expected = array_map(
+		function ( $key ) {
+			return "sns_{$key}_url";
+		},
+		array_keys( yzrh_get_sns_services() )
+	);
+	$expected[] = 'sns_rss_enable';
+	assert_same( $expected, $customize->settings );
+
+	$GLOBALS['yzrh_test']['theme_mods'] = array();
+	ob_start();
+	yzrh_output_sns_icons();
+	assert_same( '', ob_get_clean(), 'no empty list without any URL' );
+} );
+
+test( 'speech block falls back to the host style when speakerStyle sanitizes to empty', function () {
+	$html = yzrh_render_interview_speech_block( array( 'speakerStyle' => '!!!' ) );
+	assert_contains( 'yzrh-interview-speaker is-host', $html );
+	assert_not_contains( 'is- ', $html );
+} );
+
 /* ---------------------------------------------------------------------- */
 
 $failed  = 0;

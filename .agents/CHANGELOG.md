@@ -2,6 +2,20 @@
 
 ## 2026-10-18
 
+- `functions.php` と `inc/` の全ファイルに、各関数が「何をしているか」「なぜあるか」を説明する日本語コメントを追加。`inc/seo.php` と `inc/assets.php` のインデントをタブに統一。
+- `og:locale` を `ja-JP`（ハイフン）から OGP の仕様どおりの `ja_JP`（`get_locale()` の値そのまま）に修正。
+- 主要な SEO プラグイン（Yoast SEO / Rank Math / AIOSEO / SEOPress）が有効なとき、テーマの OGP を出力しないよう変更（プラグインの OGP との二重出力を防止）。判定を `yzrh_is_seo_plugin_active()` に共通化し、`yzrh_output_ogp` フィルターで出力の有無を変更可能にした。
+- `BreadcrumbList` を、HTML のパンくずと同じくトップページだけ（1 項目）のときは出力しないよう修正。
+- パンくずの検索結果名で、エスケープ済みの `get_search_query()` ではなく生の値（`get_search_query( false )`）を使うよう修正。カスタム投稿アーカイブで URL が取得できない場合に空 URL の項目を作らないよう修正。
+- `BlogPosting.isPartOf`（Blog）の `url` が常にトップページになっていたのを、`Blog` スキーマと同じ `get_blog_url()`（投稿ページ設定を反映）に統一。
+- `BlogPosting` で著者が取得できない場合に `"author": []` を出力しないよう修正。
+- ロゴ・アイキャッチの `ImageObject` を `get_attachment_image_object()` に共通化し、幅・高さが取得できない画像（SVG など）で `null` / `0` を出力せず省略するよう修正。
+- 著者の `sameAs` 収集で、文字列以外のユーザーメタ値を読み飛ばすよう修正（PHP 8 での致命的エラー防止）。
+- インタビュー一覧の CollectionPage から固定の名前「Interviews ── 取材一覧」を削除し、画面見出しと同じ `post_type_archive_title()` を使用。`url` を canonical / `og:url` と同じ URL に統一。
+- SNS の一覧を `yzrh_get_sns_services()` に集約し、カスタマイザーと出力関数の二重管理を解消。`mailto:` のお問い合わせリンクには `target="_blank"` を付けないよう変更。カスタマイザーの説明文の改行が表示されていなかったのを `<br>` に修正。
+- アセットのバージョンのフォールバックで、子テーマ使用時も親テーマ（本テーマ）の Version を使うよう `wp_get_theme( get_template() )` に修正。
+- インタビュー吹き出しブロックで、`speakerStyle` がサニタイズ後に空になった場合に `is-` だけのクラスを出力しないよう修正。
+- 上記の回帰テストを `tests/run.php` に追加（63 件）。
 - インタビュー一覧の CollectionPage JSON-LD から、固定の日本語説明文（マーケティング／デザイン等）を削除。説明文はメタディスクリプション・リードと同じ `yzrh_interview_archive_description()` から取得し、空の場合は `description` を省略する。ヘルパーはテンプレートから `inc/helpers.php` へ移動。
 - PR #14 のレビュー対応: インタビュー一覧のトップバーで、`wp_nav_menu()` の現在項目（`aria-current="page"`、`current-menu-item` / `current_page_item` / `current-menu-ancestor`）にも、フォールバックリンクの `.is-active` と同じ強調表示（文字色・下線）を適用。
 - PR #14 のレビュー対応: インタビュー一覧の canonical のページ番号部分を、固定の `/page/` ではなく `$wp_rewrite->pagination_base` とパーマリンク設定（`using_permalinks()`）から生成するよう修正。ページ送りのベースを変更しているサイトでも、存在する URL を指す。
