@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-10-18
+
+- PR #14 のレビュー対応: インタビュー一覧のトップバーで、`wp_nav_menu()` の現在項目（`aria-current="page"`、`current-menu-item` / `current_page_item` / `current-menu-ancestor`）にも、フォールバックリンクの `.is-active` と同じ強調表示（文字色・下線）を適用。
+- PR #14 のレビュー対応: インタビュー一覧の canonical のページ番号部分を、固定の `/page/` ではなく `$wp_rewrite->pagination_base` とパーマリンク設定（`using_permalinks()`）から生成するよう修正。ページ送りのベースを変更しているサイトでも、存在する URL を指す。
+
 ## 2026-10-17
 
 - `custom-logo` のテーマサポートを追加（`yzrh_custom_logo_args` で変更可能）。

@@ -116,10 +116,24 @@ body.interview-archive-page::before {
   transition: color 0.2s ease;
 }
 
+/*
+ * Active link: `.is-active` is used by the fallback links in
+ * archive-interview.php; menus rendered by wp_nav_menu() mark the current
+ * item with `aria-current="page"` on the link and current-menu classes on
+ * the <li>, so those are styled the same way.
+ */
 .interview-archive-topbar__nav a:hover,
-.interview-archive-topbar__nav a.is-active { color: var(--interview-accent); }
+.interview-archive-topbar__nav a.is-active,
+.interview-archive-topbar__nav a[aria-current="page"],
+.interview-archive-topbar__nav .current-menu-item > a,
+.interview-archive-topbar__nav .current_page_item > a,
+.interview-archive-topbar__nav .current-menu-ancestor > a { color: var(--interview-accent); }
 
-.interview-archive-topbar__nav a.is-active::after {
+.interview-archive-topbar__nav a.is-active::after,
+.interview-archive-topbar__nav a[aria-current="page"]::after,
+.interview-archive-topbar__nav .current-menu-item > a::after,
+.interview-archive-topbar__nav .current_page_item > a::after,
+.interview-archive-topbar__nav .current-menu-ancestor > a::after {
   content: "";
   display: block;
   height: 2px;

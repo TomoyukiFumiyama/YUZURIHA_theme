@@ -504,6 +504,10 @@ test( 'interview archive canonical drops ?order and keeps the page number', func
 	$GLOBALS['yzrh_test']['query_vars'] = array( 'paged' => 3 );
 	assert_same( 'https://example.test/interviews/page/3', yzrh_get_interview_archive_canonical(), 'no trailing slash' );
 
+	$GLOBALS['wp_rewrite']->pagination_base = 'seite';
+	assert_same( 'https://example.test/interviews/seite/3', yzrh_get_interview_archive_canonical(), 'custom pagination base is respected' );
+	$GLOBALS['wp_rewrite']->pagination_base = 'page';
+
 	$GLOBALS['yzrh_test']['options'] = array( 'permalink_structure' => '' );
 	assert_same( 'https://example.test/interviews?paged=3', yzrh_get_interview_archive_canonical() );
 
@@ -628,6 +632,18 @@ test( 'interview archive uses the interview taxonomy and counts every term', fun
 	);
 	assert_contains( '/interview_category/term-1/', $html );
 	assert_contains( '9<span class="unit">', $html, 'category stat must count all 9 terms, not the 7 chips' );
+} );
+
+test( 'interview top bar highlights the current item of a wp_nav_menu() menu', function () {
+	$css = file_get_contents( YZRH_THEME_DIR . '/css/page/interview-archive.css' );
+	foreach ( array(
+		'.interview-archive-topbar__nav a[aria-current="page"],',
+		'.interview-archive-topbar__nav .current-menu-item > a,',
+		'.interview-archive-topbar__nav .current-menu-item > a::after,',
+		'.interview-archive-topbar__nav a[aria-current="page"]::after,',
+	) as $selector ) {
+		assert_contains( $selector, $css );
+	}
 } );
 
 test( 'interview archive picks another public taxonomy attached to interviews', function () {

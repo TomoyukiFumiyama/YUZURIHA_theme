@@ -403,6 +403,15 @@ class WP_Query {
 	}
 }
 
+/** Minimal WP_Rewrite stand-in: pretty permalinks follow the permalink_structure option. */
+class WP_Rewrite {
+	public $pagination_base = 'page';
+	public function using_permalinks() {
+		return (bool) get_option( 'permalink_structure' );
+	}
+}
+$GLOBALS['wp_rewrite'] = new WP_Rewrite();
+
 /** Minimal WP_Post stand-in. */
 class WP_Post {
 	public $ID;

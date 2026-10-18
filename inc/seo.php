@@ -976,17 +976,21 @@ function yzrh_get_interview_archive_canonical() {
 		return '';
 	}
 
-	$url   = untrailingslashit( $url );
 	$paged = max( 1, (int) get_query_var( 'paged' ) );
 	if ( $paged > 1 ) {
-		if ( get_option( 'permalink_structure' ) ) {
-			$url .= '/page/' . $paged;
+		global $wp_rewrite;
+
+		// Same construction as get_pagenum_link(): the configured pagination
+		// base (`$wp_rewrite->pagination_base`, e.g. "page" or a translated
+		// slug) with pretty permalinks, `?paged=` otherwise.
+		if ( $wp_rewrite instanceof WP_Rewrite && $wp_rewrite->using_permalinks() ) {
+			$url = trailingslashit( $url ) . user_trailingslashit( $wp_rewrite->pagination_base . '/' . $paged, 'paged' );
 		} else {
-			$url = add_query_arg( 'paged', $paged, $url );
+			$url = add_query_arg( 'paged', $paged, untrailingslashit( $url ) );
 		}
 	}
 
-	return (string) apply_filters( 'yzrh_interview_archive_canonical', $url );
+	return (string) apply_filters( 'yzrh_interview_archive_canonical', untrailingslashit( $url ) );
 }
 
 /**

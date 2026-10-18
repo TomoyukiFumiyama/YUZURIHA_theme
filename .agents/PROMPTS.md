@@ -2,6 +2,15 @@
 
 このファイルは、Codex に与えられた指示・プロンプトを原文のまま保存するための記録です。
 
+## 2026-10-18（PR #14 レビュー対応）
+
+> 次の内容について修正すべきなら修正してください。
+> archive-interview.php
+> When a primary menu is assigned, wp_nav_menu() marks the current <li> with classes such as current-menu-item; it does not add is-active to the anchor. Because the archive stylesheet only highlights .interview-archive-topbar__nav a.is-active, the configured menu loses the active-page color and underline that the fallback links display. Add selectors for WordPress's current-menu classes or supply the expected link attribute.
+>
+> inc/seo.php
+> When a site customizes WordPress's pagination base (for example, /seite/2/ instead of /page/2/), this hard-coded segment produces a canonical for a nonexistent or redirected URL. Derive the paginated archive URL from WordPress's rewrite/pagination APIs so it respects the configured pagination base and URL structure.
+
 ## 2026-10-18
 
 > Keep list URLs without a trailing slash. I'll set the permalink structure without a trailing slash.
