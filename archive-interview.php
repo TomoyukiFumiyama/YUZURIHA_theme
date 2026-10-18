@@ -13,26 +13,30 @@ if ( ! function_exists( 'yzrh_interview_archive_taxonomy' ) ) {
 	/**
 	 * Returns the taxonomy used for interview archive chips.
 	 *
-	 * @return string
+	 * Only taxonomies actually attached to the interview post type are used,
+	 * so blog categories (and their post counts/links) never appear here
+	 * unless they were registered for interviews. `interview_category` is
+	 * preferred, then the first public taxonomy other than post formats.
+	 *
+	 * @return string Taxonomy name, or '' when interviews have none.
 	 */
 	function yzrh_interview_archive_taxonomy() {
-		return taxonomy_exists( 'interview_category' ) ? 'interview_category' : 'category';
-	}
-}
-
-if ( ! function_exists( 'yzrh_interview_archive_description' ) ) {
-	/**
-	 * Returns the archive lead text.
-	 *
-	 * @return string
-	 */
-	function yzrh_interview_archive_description() {
-		$description = get_the_archive_description();
-		if ( $description ) {
-			return wp_strip_all_tags( $description );
+		$taxonomies = get_object_taxonomies( 'interview', 'objects' );
+		if ( empty( $taxonomies ) ) {
+			return '';
 		}
 
-		return __( 'マーケティング、デザイン、開発、経営── 現場の最前線で働く人々への、ロング・インタビュー集。一問一答ではなく、ひとつの問いから始まる対話を、編集を通して読み物に仕立てました。', 'yzrh' );
+		if ( isset( $taxonomies['interview_category'] ) ) {
+			return 'interview_category';
+		}
+
+		foreach ( $taxonomies as $name => $taxonomy ) {
+			if ( 'post_format' !== $name && ! empty( $taxonomy->public ) ) {
+				return $name;
+			}
+		}
+
+		return '';
 	}
 }
 
@@ -43,9 +47,14 @@ if ( ! function_exists( 'yzrh_interview_archive_terms' ) ) {
 	 * @return WP_Term[]
 	 */
 	function yzrh_interview_archive_terms() {
+		$taxonomy = yzrh_interview_archive_taxonomy();
+		if ( '' === $taxonomy ) {
+			return array();
+		}
+
 		$terms = get_terms(
 			array(
-				'taxonomy'   => yzrh_interview_archive_taxonomy(),
+				'taxonomy'   => $taxonomy,
 				'hide_empty' => true,
 				'number'     => 7,
 			)
@@ -67,12 +76,44 @@ if ( ! function_exists( 'yzrh_interview_archive_primary_term' ) ) {
 	 * @return string
 	 */
 	function yzrh_interview_archive_primary_term( $post_id ) {
-		$terms = get_the_terms( $post_id, yzrh_interview_archive_taxonomy() );
+		$taxonomy = yzrh_interview_archive_taxonomy();
+		$terms    = '' === $taxonomy ? array() : get_the_terms( $post_id, $taxonomy );
 		if ( empty( $terms ) || is_wp_error( $terms ) ) {
 			return __( 'Interview', 'yzrh' );
 		}
 
 		return $terms[0]->name;
+	}
+}
+
+if ( ! function_exists( 'yzrh_interview_archive_term_count' ) ) {
+	/**
+	 * Returns the number of non-empty interview terms (not capped like the chips).
+	 *
+	 * @return int
+	 */
+	function yzrh_interview_archive_term_count() {
+		$taxonomy = yzrh_interview_archive_taxonomy();
+		if ( '' === $taxonomy ) {
+			return 0;
+		}
+
+		$count = wp_count_terms( array( 'taxonomy' => $taxonomy, 'hide_empty' => true ) );
+
+		return is_wp_error( $count ) ? 0 : (int) $count;
+	}
+}
+
+if ( ! function_exists( 'yzrh_interview_archive_last_published' ) ) {
+	/**
+	 * Returns the publish date of the newest interview, formatted for display.
+	 *
+	 * @return string Formatted date, or '' when no interview is published.
+	 */
+	function yzrh_interview_archive_last_published() {
+		$last = get_lastpostdate( 'blog', 'interview' );
+
+		return $last ? mysql2date( 'Y.m.d', $last ) : '';
 	}
 }
 
@@ -178,59 +219,78 @@ $shown_start    = $total_posts > 0 ? ( ( $current_page - 1 ) * $posts_per_page )
 $shown_end      = $total_posts > 0 ? min( $total_posts, $shown_start + count( $archive_posts ) - 1 ) : 0;
 $total_pages    = $wp_query instanceof WP_Query ? (int) $wp_query->max_num_pages : 1;
 $terms          = yzrh_interview_archive_terms();
+$term_count     = yzrh_interview_archive_term_count();
+$last_published = yzrh_interview_archive_last_published();
 $archive_url    = get_post_type_archive_link( 'interview' );
 $description    = yzrh_interview_archive_description();
+$archive_title  = post_type_archive_title( '', false );
 ?>
 <!DOCTYPE html>
 <html <?php language_attributes(); ?>>
 <head>
 	<meta charset="<?php bloginfo( 'charset' ); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<meta name="description" content="<?php echo esc_attr( $description ); ?>">
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Noto+Serif+JP:wght@300;400;500;700;900&family=Zen+Kaku+Gothic+New:wght@300;400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+	<?php if ( $description ) : ?>
+		<meta name="description" content="<?php echo esc_attr( $description ); ?>">
+	<?php endif; ?>
 	<?php wp_head(); ?>
 </head>
 <body <?php body_class( 'interview-archive-page' ); ?>>
 <?php wp_body_open(); ?>
 
 <header class="interview-archive-topbar">
-	<a href="<?php echo esc_url( home_url( '/' ) ); ?>" class="interview-archive-topbar__logo">Editorial<span>.</span></a>
+	<a href="<?php echo esc_url( home_url( '/' ) ); ?>" class="interview-archive-topbar__logo" rel="home"><?php bloginfo( 'name' ); ?><span>.</span></a>
 	<nav class="interview-archive-topbar__nav" aria-label="<?php esc_attr_e( 'Primary', 'yzrh' ); ?>">
-		<a href="<?php echo esc_url( home_url( '/' ) ); ?>"><?php esc_html_e( 'Home', 'yzrh' ); ?></a>
-		<a href="<?php echo esc_url( $archive_url ); ?>" class="is-active" aria-current="page"><?php esc_html_e( 'Interviews', 'yzrh' ); ?></a>
-		<a href="<?php echo esc_url( home_url( '/topics/' ) ); ?>"><?php esc_html_e( 'Topics', 'yzrh' ); ?></a>
-		<a href="<?php echo esc_url( home_url( '/about/' ) ); ?>"><?php esc_html_e( 'About', 'yzrh' ); ?></a>
-		<a href="<?php echo esc_url( home_url( '/contact/' ) ); ?>"><?php esc_html_e( 'Contact', 'yzrh' ); ?></a>
+		<?php if ( has_nav_menu( 'primary' ) ) : ?>
+			<?php
+			wp_nav_menu(
+				array(
+					'theme_location' => 'primary',
+					'container'      => false,
+					'menu_class'     => 'interview-archive-topbar__menu',
+					'depth'          => 1,
+					'fallback_cb'    => false,
+				)
+			);
+			?>
+		<?php else : ?>
+			<a href="<?php echo esc_url( home_url( '/' ) ); ?>"><?php esc_html_e( 'Home', 'yzrh' ); ?></a>
+			<a href="<?php echo esc_url( $archive_url ); ?>" class="is-active" aria-current="page"><?php echo esc_html( $archive_title ); ?></a>
+		<?php endif; ?>
 	</nav>
 </header>
 
 <nav class="interview-archive-breadcrumb" aria-label="<?php esc_attr_e( 'Breadcrumb', 'yzrh' ); ?>">
 	<ol>
 		<li><a href="<?php echo esc_url( home_url( '/' ) ); ?>"><?php esc_html_e( 'Home', 'yzrh' ); ?></a></li>
-		<li aria-current="page"><?php esc_html_e( 'Interviews', 'yzrh' ); ?></li>
+		<li aria-current="page"><?php echo esc_html( $archive_title ); ?></li>
 	</ol>
 </nav>
 
 <main id="primary" class="interview-archive-main">
 	<section class="interview-archive-hero">
 		<div class="interview-archive-hero__issue"><?php esc_html_e( 'Archive / All Interviews', 'yzrh' ); ?></div>
-		<h1><?php esc_html_e( '取材記録、', 'yzrh' ); ?><em><?php esc_html_e( 'そのすべて', 'yzrh' ); ?></em><span class="dot">.</span></h1>
-		<p class="interview-archive-hero__lead"><?php echo esc_html( $description ); ?></p>
+		<h1><?php echo esc_html( $archive_title ); ?><span class="dot">.</span></h1>
+		<?php if ( $description ) : ?>
+			<p class="interview-archive-hero__lead"><?php echo esc_html( $description ); ?></p>
+		<?php endif; ?>
 		<div class="interview-archive-stats">
 			<div class="interview-archive-stat">
 				<div class="interview-archive-stat__figure"><?php echo esc_html( number_format_i18n( $total_posts ) ); ?><span class="unit"><?php esc_html_e( '記事', 'yzrh' ); ?></span></div>
 				<div class="interview-archive-stat__label"><?php esc_html_e( 'Total Interviews', 'yzrh' ); ?></div>
 			</div>
-			<div class="interview-archive-stat">
-				<div class="interview-archive-stat__figure"><?php echo esc_html( number_format_i18n( count( $terms ) ) ); ?><span class="unit"><?php esc_html_e( '分野', 'yzrh' ); ?></span></div>
-				<div class="interview-archive-stat__label"><?php esc_html_e( 'Categories', 'yzrh' ); ?></div>
-			</div>
-			<div class="interview-archive-stat">
-				<div class="interview-archive-stat__figure"><?php echo esc_html( gmdate( 'Y' ) ); ?><span class="unit">—</span></div>
-				<div class="interview-archive-stat__label"><?php esc_html_e( 'Updated', 'yzrh' ); ?></div>
-			</div>
+			<?php if ( $term_count > 0 ) : ?>
+				<div class="interview-archive-stat">
+					<div class="interview-archive-stat__figure"><?php echo esc_html( number_format_i18n( $term_count ) ); ?><span class="unit"><?php esc_html_e( '分野', 'yzrh' ); ?></span></div>
+					<div class="interview-archive-stat__label"><?php esc_html_e( 'Categories', 'yzrh' ); ?></div>
+				</div>
+			<?php endif; ?>
+			<?php if ( $last_published ) : ?>
+				<div class="interview-archive-stat">
+					<div class="interview-archive-stat__figure"><?php echo esc_html( $last_published ); ?></div>
+					<div class="interview-archive-stat__label"><?php esc_html_e( 'Latest', 'yzrh' ); ?></div>
+				</div>
+			<?php endif; ?>
 			<div class="interview-archive-stat">
 				<div class="interview-archive-stat__figure"><?php echo esc_html( number_format_i18n( count( $archive_posts ) ) ); ?><span class="unit"><?php esc_html_e( '本', 'yzrh' ); ?></span></div>
 				<div class="interview-archive-stat__label"><?php esc_html_e( 'This Page', 'yzrh' ); ?></div>
@@ -253,8 +313,8 @@ $description    = yzrh_interview_archive_description();
 			<form class="interview-archive-sort" method="get" action="<?php echo esc_url( $archive_url ); ?>">
 				<label for="interview-archive-sort-select"><?php esc_html_e( 'Sort by', 'yzrh' ); ?></label>
 				<select id="interview-archive-sort-select" name="order" aria-label="<?php esc_attr_e( 'Sort interviews', 'yzrh' ); ?>" onchange="this.form.submit()">
-					<option value="DESC" <?php selected( isset( $_GET['order'] ) ? strtoupper( sanitize_key( wp_unslash( $_GET['order'] ) ) ) : 'DESC', 'DESC' ); ?>><?php esc_html_e( '新着順', 'yzrh' ); ?></option>
-					<option value="ASC" <?php selected( isset( $_GET['order'] ) ? strtoupper( sanitize_key( wp_unslash( $_GET['order'] ) ) ) : 'DESC', 'ASC' ); ?>><?php esc_html_e( '古い順', 'yzrh' ); ?></option>
+					<option value="DESC" <?php selected( yzrh_get_interview_order(), 'DESC' ); ?>><?php esc_html_e( '新着順', 'yzrh' ); ?></option>
+					<option value="ASC" <?php selected( yzrh_get_interview_order(), 'ASC' ); ?>><?php esc_html_e( '古い順', 'yzrh' ); ?></option>
 				</select>
 			</form>
 		</div>
@@ -267,7 +327,7 @@ $description    = yzrh_interview_archive_description();
 		$featured_byline = yzrh_interview_archive_byline( $featured_id );
 		?>
 		<section class="interview-archive-featured">
-			<div class="interview-archive-featured__marker"><?php esc_html_e( "Editor's Pick — Featured Story", 'yzrh' ); ?></div>
+			<div class="interview-archive-featured__marker"><?php esc_html_e( 'Featured Story', 'yzrh' ); ?></div>
 			<article class="interview-archive-featured-card">
 				<a class="interview-archive-featured-card__image" href="<?php echo esc_url( get_permalink( $featured_id ) ); ?>" aria-label="<?php echo esc_attr( get_the_title( $featured_id ) ); ?>">
 					<?php if ( has_post_thumbnail( $featured_id ) ) : ?>
@@ -354,61 +414,54 @@ $description    = yzrh_interview_archive_description();
 		</section>
 	<?php endif; ?>
 
-	<section class="interview-archive-newsletter">
-		<div class="interview-archive-newsletter__wrap">
-			<div>
-				<div class="interview-archive-newsletter__label"><?php esc_html_e( 'Subscribe — Weekly Letter', 'yzrh' ); ?></div>
-				<h2><?php esc_html_e( '毎週金曜の朝、', 'yzrh' ); ?><br><?php esc_html_e( '新しい', 'yzrh' ); ?><em><?php esc_html_e( '取材', 'yzrh' ); ?></em><?php esc_html_e( 'が届きます。', 'yzrh' ); ?></h2>
-			</div>
-			<div class="interview-archive-newsletter__form-area">
-				<p><?php esc_html_e( '登録いただいた方には、編集部が選ぶおすすめの1記事と、まだどこにも公開していないインタビューの裏話を、週に一通だけお届けします。', 'yzrh' ); ?></p>
-				<form class="interview-archive-newsletter__field" action="<?php echo esc_url( home_url( '/contact/' ) ); ?>" method="get">
-					<label class="screen-reader-text" for="interview-archive-email"><?php esc_html_e( 'Email address', 'yzrh' ); ?></label>
-					<input id="interview-archive-email" name="email" type="email" placeholder="your@email.com" required>
-					<button type="submit"><?php esc_html_e( 'Subscribe →', 'yzrh' ); ?></button>
-				</form>
-			</div>
-		</div>
-	</section>
 </main>
 
 <footer class="interview-archive-footer">
 	<div class="interview-archive-footer__top">
 		<div>
-			<div class="interview-archive-footer__logo">Editorial<span>.</span></div>
-			<p class="interview-archive-footer__tagline"><?php esc_html_e( 'マーケティング、デザイン、開発、経営── 現場の人々への取材を、ひとつの読み物に。', 'yzrh' ); ?></p>
+			<div class="interview-archive-footer__logo"><?php bloginfo( 'name' ); ?><span>.</span></div>
+			<?php if ( get_bloginfo( 'description' ) ) : ?>
+				<p class="interview-archive-footer__tagline"><?php bloginfo( 'description' ); ?></p>
+			<?php endif; ?>
 		</div>
 		<div class="interview-archive-footer__col">
 			<h2><?php esc_html_e( 'Sections', 'yzrh' ); ?></h2>
 			<ul>
-				<li><a href="<?php echo esc_url( $archive_url ); ?>"><?php esc_html_e( 'All Interviews', 'yzrh' ); ?></a></li>
-				<li><a href="<?php echo esc_url( home_url( '/topics/marketing/' ) ); ?>"><?php esc_html_e( 'Marketing', 'yzrh' ); ?></a></li>
-				<li><a href="<?php echo esc_url( home_url( '/topics/design/' ) ); ?>"><?php esc_html_e( 'Design', 'yzrh' ); ?></a></li>
-				<li><a href="<?php echo esc_url( home_url( '/topics/ai/' ) ); ?>"><?php esc_html_e( 'AI & Tech', 'yzrh' ); ?></a></li>
+				<li><a href="<?php echo esc_url( $archive_url ); ?>"><?php echo esc_html( $archive_title ); ?></a></li>
+				<?php foreach ( $terms as $term ) : ?>
+					<?php $term_link = get_term_link( $term ); ?>
+					<?php if ( ! is_wp_error( $term_link ) ) : ?>
+						<li><a href="<?php echo esc_url( $term_link ); ?>"><?php echo esc_html( $term->name ); ?></a></li>
+					<?php endif; ?>
+				<?php endforeach; ?>
 			</ul>
 		</div>
-		<div class="interview-archive-footer__col">
-			<h2><?php esc_html_e( 'About', 'yzrh' ); ?></h2>
-			<ul>
-				<li><a href="<?php echo esc_url( home_url( '/about/' ) ); ?>"><?php esc_html_e( '編集部について', 'yzrh' ); ?></a></li>
-				<li><a href="<?php echo esc_url( home_url( '/writers/' ) ); ?>"><?php esc_html_e( '寄稿者一覧', 'yzrh' ); ?></a></li>
-				<li><a href="<?php echo esc_url( home_url( '/contact/' ) ); ?>"><?php esc_html_e( '取材依頼', 'yzrh' ); ?></a></li>
-				<li><a href="<?php echo esc_url( home_url( '/advertise/' ) ); ?>"><?php esc_html_e( '広告掲載', 'yzrh' ); ?></a></li>
-			</ul>
-		</div>
+		<?php if ( has_nav_menu( 'footer' ) ) : ?>
+			<div class="interview-archive-footer__col">
+				<h2><?php esc_html_e( 'About', 'yzrh' ); ?></h2>
+				<?php
+				wp_nav_menu(
+					array(
+						'theme_location' => 'footer',
+						'container'      => false,
+						'depth'          => 1,
+						'fallback_cb'    => false,
+					)
+				);
+				?>
+			</div>
+		<?php endif; ?>
 		<div class="interview-archive-footer__col">
 			<h2><?php esc_html_e( 'Social', 'yzrh' ); ?></h2>
-			<ul>
-				<li><a href="#"><?php esc_html_e( 'X / Twitter', 'yzrh' ); ?></a></li>
-				<li><a href="#"><?php esc_html_e( 'note', 'yzrh' ); ?></a></li>
-				<li><a href="#"><?php esc_html_e( 'YouTube', 'yzrh' ); ?></a></li>
-				<li><a href="<?php echo esc_url( get_feed_link() ); ?>"><?php esc_html_e( 'RSS', 'yzrh' ); ?></a></li>
-			</ul>
+			<?php yzrh_output_sns_icons(); ?>
 		</div>
 	</div>
 	<div class="interview-archive-footer__bottom">
-		<div><?php echo esc_html( '© ' . gmdate( 'Y' ) . ' Editorial Magazine — All Rights Reserved' ); ?></div>
-		<div><a href="<?php echo esc_url( home_url( '/privacy/' ) ); ?>"><?php esc_html_e( 'Privacy', 'yzrh' ); ?></a> · <a href="<?php echo esc_url( home_url( '/terms/' ) ); ?>"><?php esc_html_e( 'Terms', 'yzrh' ); ?></a> · <a href="<?php echo esc_url( home_url( '/cookie/' ) ); ?>"><?php esc_html_e( 'Cookie', 'yzrh' ); ?></a></div>
+		<div>&copy; <?php echo esc_html( wp_date( 'Y' ) ); ?> <?php bloginfo( 'name' ); ?></div>
+		<?php $privacy_link = get_the_privacy_policy_link(); ?>
+		<?php if ( $privacy_link ) : ?>
+			<div><?php echo wp_kses_post( $privacy_link ); ?></div>
+		<?php endif; ?>
 	</div>
 </footer>
 

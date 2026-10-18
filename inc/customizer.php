@@ -2,6 +2,7 @@
 /**
  * SNSアイコン用のカスタマイザー設定
  */
+if ( ! defined( 'ABSPATH' ) ) { exit; }
 function yzrh_customize_register_sns( $wp_customize ) {
 
 	// セクション追加
@@ -107,8 +108,8 @@ function yzrh_output_sns_icons() {
 			$has_output = true;
 			?>
 			<li class="sns-icons__item sns-icons__item--<?php echo esc_attr( $key ); ?>">
-				<a href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener">
-					<span class="sns-icons__icon <?php echo esc_attr( $args['icon_class'] ); ?>"></span>
+				<a href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener noreferrer">
+					<span class="sns-icons__icon <?php echo esc_attr( $args['icon_class'] ); ?>" aria-hidden="true"></span>
 					<span class="sns-icons__label"><?php echo esc_html( $args['label'] ); ?></span>
 				</a>
 			</li>
@@ -116,8 +117,8 @@ function yzrh_output_sns_icons() {
 
 		<?php if ( get_theme_mod( 'sns_rss_enable' ) ) : ?>
 			<li class="sns-icons__item sns-icons__item--rss">
-				<a href="<?php echo esc_url( get_bloginfo( 'rss2_url' ) ); ?>" target="_blank" rel="noopener">
-					<span class="sns-icons__icon icon-rss"></span>
+				<a href="<?php echo esc_url( get_bloginfo( 'rss2_url' ) ); ?>" target="_blank" rel="noopener noreferrer">
+					<span class="sns-icons__icon icon-rss" aria-hidden="true"></span>
 					<span class="sns-icons__label">RSS</span>
 				</a>
 			</li>

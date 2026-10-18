@@ -1,6 +1,9 @@
 (function (blocks, blockEditor, components, element, i18n) {
 	const { registerBlockType } = blocks;
-	const { RichText, InspectorControls } = blockEditor;
+	const { RichText, InspectorControls, useBlockProps } = blockEditor;
+
+	// Must match 'api_version' in inc/assets.php (Block API v3: WordPress 6.3+, iframed editor).
+	const API_VERSION = 3;
 	const { PanelBody, SelectControl, TextControl } = components;
 	const { createElement: el, Fragment } = element;
 	const { __ } = i18n;
@@ -53,6 +56,7 @@
 	);
 
 	registerBlockType('yzrh/interview-speech', {
+		apiVersion: API_VERSION,
 		title: __('Interview Speech Bubble', 'yzrh'),
 		icon: 'format-chat',
 		category: 'widgets',
@@ -65,11 +69,13 @@
 			speakerStyle: { type: 'string', default: 'host' },
 		},
 		edit: ({ attributes, setAttributes }) => {
-			const rowClasses = [
-				'wp-block-yzrh-interview-speech',
-				'yzrh-interview-bubble-row',
-				attributes.alignment === 'right' ? 'is-right' : '',
-			].filter(Boolean).join(' ');
+			// useBlockProps() adds the wp-block-yzrh-interview-speech class and the editor wrapper props.
+			const blockProps = useBlockProps({
+				className: [
+					'yzrh-interview-bubble-row',
+					attributes.alignment === 'right' ? 'is-right' : '',
+				].filter(Boolean).join(' '),
+			});
 			const speakerClasses = [
 				'yzrh-interview-speaker',
 				`is-${attributes.speakerStyle}`,
@@ -86,7 +92,7 @@
 				speechControls(attributes, setAttributes),
 				el(
 					'div',
-					{ className: rowClasses },
+					blockProps,
 					el(
 						'div',
 						{ className: speakerClasses },
@@ -108,6 +114,7 @@
 	});
 
 	registerBlockType('yzrh/interview-pullquote', {
+		apiVersion: API_VERSION,
 		title: __('Interview Pull Quote', 'yzrh'),
 		icon: 'format-quote',
 		category: 'widgets',
@@ -117,7 +124,8 @@
 		},
 		edit: ({ attributes, setAttributes }) => el(
 			'aside',
-			{ className: 'wp-block-yzrh-interview-pullquote yzrh-interview-pullquote' },
+			// useBlockProps() adds the wp-block-yzrh-interview-pullquote class and the editor wrapper props.
+			useBlockProps({ className: 'yzrh-interview-pullquote' }),
 			el(RichText, {
 				tagName: 'p',
 				className: 'yzrh-interview-pullquote__text',

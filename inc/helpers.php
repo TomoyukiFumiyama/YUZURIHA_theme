@@ -28,6 +28,27 @@ function yzrh_core_get_settings() {
 	return wp_parse_args( $stored, $defaults );
 }
 
+if ( ! function_exists( 'yzrh_interview_archive_description' ) ) {
+	/**
+	 * Returns the interview archive description as plain text.
+	 *
+	 * Single source for the archive's meta description, hero lead
+	 * (archive-interview.php) and CollectionPage JSON-LD (inc/seo.php), so an
+	 * empty description is omitted everywhere instead of being replaced by
+	 * project-specific copy.
+	 *
+	 * @return string Plain text, or '' when no description is set.
+	 */
+	function yzrh_interview_archive_description() {
+		$description = get_the_archive_description();
+		if ( $description ) {
+			return trim( wp_strip_all_tags( $description ) );
+		}
+
+		return '';
+	}
+}
+
 function yzrh_get_setting( $key, $default = null ) {
 	$settings = yzrh_core_get_settings();
 	return array_key_exists( $key, $settings ) ? $settings[ $key ] : $default;

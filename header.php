@@ -12,27 +12,26 @@
 		<header class="global-header-wrapper">
 			<div class="global-header-container">
 				<div class="global-header">
-				<a href="<?php echo esc_url( home_url( '/' ) ); ?>" class="header-nav-link"><img src="<?php echo get_template_directory_uri();?>/assets/logo-xxxxxxxxx.svg" alt="" class="global-header-image" /></a>
+				<?php if ( has_custom_logo() ) : ?>
+					<?php the_custom_logo(); ?>
+				<?php else : ?>
+					<a href="<?php echo esc_url( home_url( '/' ) ); ?>" class="header-nav-link global-header-site-name" rel="home"><?php bloginfo( 'name' ); ?></a>
+				<?php endif; ?>
 				</div>
-				<nav class="header-nav">
-					<ul class="header-nav-list">
-						<li class="header-nav-item">
-							<a href="<?php echo esc_url( home_url( '/' ) ); ?>aboutus" class="header-nav-link">Who We Are</a>
-						</li>
-						<li class="header-nav-item">
-							<p class="header-nav-link">Our Offer</p>
-							<ul class="dropdown-menu">
-								<li><a href="<?php echo esc_url( home_url( '/' ) ); ?>services">Services</a></li>
-								<li><a href="<?php echo esc_url( home_url( '/' ) ); ?>solutions">Solutions</a></li>
-							</ul>
-						</li>
-						<li class="header-nav-item">
-							<a href="<?php echo esc_url( home_url( '/' ) ); ?>portfolio" class="header-nav-link">Customer Reference</a>
-						</li>
-						<li class="header-nav-item label-contact">
-							<a href="<?php echo esc_url( home_url( '/' ) ); ?>contactus" class="header-nav-link">Contact Us</a>
-						</li>
-					</ul>
-				</nav>
+				<?php if ( has_nav_menu( 'primary' ) ) : ?>
+					<nav class="header-nav" aria-label="<?php esc_attr_e( 'Primary Menu', 'yzrh' ); ?>">
+						<?php
+						wp_nav_menu(
+							array(
+								'theme_location' => 'primary',
+								'container'      => false,
+								'menu_class'     => 'header-nav-list',
+								'depth'          => 2,
+								'fallback_cb'    => false,
+							)
+						);
+						?>
+					</nav>
+				<?php endif; ?>
 			</div>
 		</header>

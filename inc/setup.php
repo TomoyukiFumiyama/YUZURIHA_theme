@@ -18,6 +18,22 @@ if (! function_exists( 'yzrh_setup' ) ) :
 		// 投稿と固定ページでアイキャッチ画像を有効にします。
 		add_theme_support( 'post-thumbnails' );
 
+		// カスタマイザーの「サイト基本情報」でロゴを設定できるようにします。
+		// header.php / footer.php は has_custom_logo() で表示を切り替え、未設定時はサイト名を表示します。
+		add_theme_support(
+			'custom-logo',
+			apply_filters(
+				'yzrh_custom_logo_args',
+				array(
+					'height'               => 80,
+					'width'                => 240,
+					'flex-height'          => true,
+					'flex-width'           => true,
+					'unlink-homepage-logo' => false,
+				)
+			)
+		);
+
 		// RSSフィードのリンクを<head>に出力します。
 		add_theme_support( 'automatic-feed-links' );
 

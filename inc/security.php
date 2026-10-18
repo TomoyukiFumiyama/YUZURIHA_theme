@@ -67,33 +67,47 @@ class YZRH_Security_Hardening {
 	}
 
 	/**
-	 * Strip the version query arg from enqueued assets.
+	 * Mask the WordPress core version in enqueued asset URLs.
+	 *
+	 * Only a `ver` value equal to the running core version is replaced, and it
+	 * is replaced with a site-specific hash instead of being removed, so the URL
+	 * still changes after a core update (cache busting keeps working). Theme and
+	 * plugin versions are left untouched, and the rest of the URL is never
+	 * re-encoded (duplicate parameters such as Google Fonts `family` survive).
 	 *
 	 * @param string $src    Asset URL.
 	 * @param string $handle Asset handle.
 	 * @return string
 	 */
 	public static function remove_asset_version( $src, $handle ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed
-		if ( false === strpos( $src, 'ver=' ) ) {
+		if ( ! is_string( $src ) || false === strpos( $src, 'ver=' ) ) {
 			return $src;
 		}
 
-		$parts = explode( '?', $src, 2 );
-
-		if ( 2 !== count( $parts ) ) {
+		$core_version = get_bloginfo( 'version' );
+		if ( '' === $core_version ) {
 			return $src;
 		}
 
-		$base   = $parts[0];
-		$params = wp_parse_args( $parts[1] );
+		$pattern = '/([?&]|&#038;|&amp;)ver=' . preg_quote( rawurlencode( $core_version ), '/' ) . '(?=&|#|$)/';
 
-		if ( isset( $params['ver'] ) ) {
-			unset( $params['ver'] );
+		return preg_replace( $pattern, '${1}ver=' . self::get_masked_core_version( $core_version ), $src );
+	}
+
+	/**
+	 * Site-specific, non-reversible stand-in for the core version.
+	 *
+	 * @param string $core_version Running WordPress version.
+	 * @return string
+	 */
+	protected static function get_masked_core_version( $core_version ) {
+		static $masked = array();
+
+		if ( ! isset( $masked[ $core_version ] ) ) {
+			$masked[ $core_version ] = substr( wp_hash( 'yzrh-asset-' . $core_version ), 0, 10 );
 		}
 
-		$query = http_build_query( $params );
-
-		return $query ? $base . '?' . $query : $base;
+		return $masked[ $core_version ];
 	}
 
 	/**
@@ -122,17 +136,45 @@ class YZRH_Security_Hardening {
 
 		$headers = apply_filters( 'yzrh_security_headers', self::get_default_security_headers() );
 
-		if ( empty( $headers ) || ! is_array( $headers ) ) {
-			return;
+		foreach ( self::prepare_header_lines( $headers ) as $line ) {
+			header( $line, true );
+		}
+	}
+
+	/**
+	 * Validates filtered headers and builds "Name: value" lines.
+	 *
+	 * Filters may return anything, so invalid entries are skipped instead of
+	 * causing a fatal error: names must be HTTP token characters, values must
+	 * be scalars (cast to string) without CR/LF, and empty values are dropped.
+	 *
+	 * @param mixed $headers Filtered header map.
+	 * @return string[]
+	 */
+	public static function prepare_header_lines( $headers ) {
+		if ( ! is_array( $headers ) ) {
+			return array();
 		}
 
+		$lines = array();
 		foreach ( $headers as $name => $value ) {
-			if ( empty( $name ) || '' === trim( $value ) ) {
+			if ( ! is_string( $name ) || ! preg_match( '/^[!#$%&\'*+.^_`|~0-9A-Za-z-]+$/', $name ) ) {
 				continue;
 			}
 
-			header( sprintf( '%s: %s', $name, $value ), true );
+			if ( is_bool( $value ) || ! is_scalar( $value ) ) {
+				continue;
+			}
+
+			$value = trim( (string) $value );
+			if ( '' === $value || preg_match( '/[\r\n\0]/', $value ) ) {
+				continue;
+			}
+
+			$lines[] = $name . ': ' . $value;
 		}
+
+		return $lines;
 	}
 
 
@@ -142,14 +184,81 @@ class YZRH_Security_Hardening {
 	 * @return array<string, string>
 	 */
 	protected static function get_default_security_headers() {
-		return array(
-			'Strict-Transport-Security'         => 'max-age=63072000; includeSubDomains; preload',
+		$headers = array();
+
+		$hsts = self::get_hsts_header_value();
+		if ( '' !== $hsts ) {
+			$headers['Strict-Transport-Security'] = $hsts;
+		}
+
+		return $headers + array(
 			'X-Frame-Options'                   => 'SAMEORIGIN',
 			'X-Content-Type-Options'            => 'nosniff',
 			'X-Permitted-Cross-Domain-Policies' => 'none',
 			'Referrer-Policy'                   => 'strict-origin-when-cross-origin',
 			'Permissions-Policy'                => 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
 		);
+	}
+
+	/**
+	 * Builds the Strict-Transport-Security value.
+	 *
+	 * Sent only over HTTPS. The theme default is `max-age=31536000` without
+	 * `includeSubDomains` or `preload`: browsers remember HSTS per domain for
+	 * the whole max-age, so those directives must be an explicit per-site
+	 * decision (every subdomain on HTTPS / hstspreload.org submission).
+	 *
+	 * Enable them per site through {@see 'yzrh_hsts_directives'}:
+	 *
+	 *     add_filter( 'yzrh_hsts_directives', function ( $directives ) {
+	 *         $directives['includeSubDomains'] = true;
+	 *         $directives['preload']           = true; // requires includeSubDomains
+	 *         return $directives;
+	 *     } );
+	 *
+	 * Return false from the filter to stop sending the header (for example
+	 * when the web server or CDN already sets it). A max-age of 0 sends
+	 * `max-age=0`, which tells browsers to forget a previously sent policy.
+	 *
+	 * Behind a TLS-terminating proxy, is_ssl() is true only when WordPress is
+	 * configured to trust the forwarded protocol.
+	 *
+	 * @return string Header value, or '' when the header should not be sent.
+	 */
+	public static function get_hsts_header_value() {
+		if ( ! is_ssl() ) {
+			return '';
+		}
+
+		$defaults = array(
+			'max-age'           => 31536000,
+			'includeSubDomains' => false,
+			'preload'           => false,
+		);
+
+		$directives = apply_filters( 'yzrh_hsts_directives', $defaults );
+		if ( false === $directives ) {
+			return '';
+		}
+		$directives = is_array( $directives ) ? array_merge( $defaults, $directives ) : $defaults;
+
+		$max_age = absint( $directives['max-age'] );
+		$value   = 'max-age=' . $max_age;
+
+		if ( 0 === $max_age ) {
+			return $value;
+		}
+
+		if ( ! empty( $directives['includeSubDomains'] ) ) {
+			$value .= '; includeSubDomains';
+
+			// preload is only valid together with includeSubDomains.
+			if ( ! empty( $directives['preload'] ) ) {
+				$value .= '; preload';
+			}
+		}
+
+		return $value;
 	}
 }
 
