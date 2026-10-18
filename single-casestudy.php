@@ -30,10 +30,13 @@ get_header();
 				?>
 			</div>
 
-			<footer class="entry-footer">
-				<p class="case-cta-text"><?php esc_html_e( 'この事例に関するご相談はお問い合わせからご連絡ください。', 'yzrh' ); ?></p>
-				<a class="case-cta-link" href="<?php echo esc_url( home_url( '/contact/' ) ); ?>"><?php esc_html_e( 'お問い合わせ', 'yzrh' ); ?></a>
-			</footer>
+			<?php $yzrh_contact_url = get_theme_mod( 'sns_contact_url' ); ?>
+			<?php if ( $yzrh_contact_url ) : ?>
+				<footer class="entry-footer">
+					<p class="case-cta-text"><?php esc_html_e( 'この事例に関するご相談はお問い合わせからご連絡ください。', 'yzrh' ); ?></p>
+					<a class="case-cta-link" href="<?php echo esc_url( $yzrh_contact_url ); ?>"><?php esc_html_e( 'お問い合わせ', 'yzrh' ); ?></a>
+				</footer>
+			<?php endif; ?>
 		</article>
 	<?php endwhile; ?>
 </main>

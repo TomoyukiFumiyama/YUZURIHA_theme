@@ -4,9 +4,6 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /**
  * Core JSON-LD structured data generator.
  */
-if ( ! defined( 'ABSPATH' ) ) {
-        exit;
-}
 
 if ( ! class_exists( 'YZRH_Structured_Data_Generator' ) ) {
         class YZRH_Structured_Data_Generator {
@@ -16,13 +13,6 @@ if ( ! class_exists( 'YZRH_Structured_Data_Generator' ) ) {
                  * @var array
                  */
                 protected static $schema_callbacks = array();
-
-                /**
-                 * Bootstraps the structured data output.
-                 */
-                public static function init() {
-                        add_action( 'wp_head', array( __CLASS__, 'render' ), 5 );
-                }
 
                 /**
                  * Registers a schema generator callback.
@@ -60,7 +50,11 @@ if ( ! class_exists( 'YZRH_Structured_Data_Generator' ) ) {
                         }
 
                         foreach ( $schemas as $schema ) {
-                                echo '<script type="application/ld+json">' . wp_json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) . '</script>' . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                                // JSON_HEX_TAG / JSON_HEX_AMP write the characters "<", ">" and "&" as JSON
+                                // unicode escapes (backslash-u003C, -u003E, -u0026), so no value (including
+                                // ones added through filters) can close the <script> element or be read as an
+                                // HTML entity. Decoded JSON data is unchanged.
+                                echo '<script type="application/ld+json">' . wp_json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP ) . '</script>' . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
                         }
                 }
 
@@ -83,29 +77,94 @@ if ( ! class_exists( 'YZRH_Structured_Data_Generator' ) ) {
 		/**
 		 * Provides a short text summary for the given post.
 		 *
-		 * @param int $post_id Post ID.
-		 * @return string
+		 * JSON-LD uses only a manually entered excerpt, read from the raw
+		 * field: generating one would run the full `the_content` filter chain
+		 * inside wp_head for every listed post (shortcodes, view counters and
+		 * other plugin side effects). Pass $allow_generated = true where a
+		 * generated summary is wanted (OGP on a single page). Password-
+		 * protected posts never expose a summary.
+		 *
+		 * @param int  $post_id         Post ID.
+		 * @param bool $allow_generated Fall back to WordPress' generated excerpt.
+		 * @return string Plain text, or '' when there is no summary.
 		 */
-		public static function get_post_description( $post_id ) {
-			$excerpt = get_the_excerpt( $post_id );
-			if ( $excerpt ) {
-				return wp_strip_all_tags( $excerpt );
+		public static function get_post_description( $post_id, $allow_generated = false ) {
+			if ( post_password_required( $post_id ) ) {
+				return '';
 			}
 
-			$content = get_post_field( 'post_content', $post_id );
-			$content = wp_strip_all_tags( $content );
+			if ( has_excerpt( $post_id ) ) {
+				return self::sanitize_text( get_post_field( 'post_excerpt', $post_id ) );
+			}
 
-			return wp_trim_words( $content, 55 );
+			if ( ! $allow_generated ) {
+				return '';
+			}
+
+			return wp_trim_words( self::sanitize_text( get_the_excerpt( $post_id ) ), 55 );
 		}
 
 		/**
-		 * Normalizes arbitrary text for safe JSON-LD usage.
+		 * Returns how many items precede the first post of the current page.
+		 *
+		 * ListItem positions are numbered from this offset by counting only
+		 * the items actually emitted, so skipped posts leave no gaps. An
+		 * explicit `offset` query var is honoured (WordPress ignores `paged`
+		 * when `offset` is set). Sticky posts prepended to the first home
+		 * page can still overlap with page 2; that comes from the query itself.
+		 *
+		 * @param WP_Query $query Query object.
+		 * @return int
+		 */
+		public static function get_list_start_offset( $query ) {
+			$explicit_offset = $query->get( 'offset', '' );
+			if ( '' !== $explicit_offset && null !== $explicit_offset ) {
+				return max( 0, (int) $explicit_offset );
+			}
+
+			$paged    = max( 1, (int) $query->get( 'paged', 1 ) );
+			$per_page = (int) $query->get( 'posts_per_page', count( $query->posts ) );
+
+			return $per_page > 0 ? ( $paged - 1 ) * $per_page : 0;
+		}
+
+		/**
+		 * Returns the schema.org ItemListOrder matching the query's sort order.
+		 *
+		 * Reads the query itself, so `?order=ASC` on the interview archive
+		 * (applied in pre_get_posts) and any project-specific ordering are
+		 * described correctly. Random ordering is reported as unordered.
+		 *
+		 * @param WP_Query $query Query object.
+		 * @return string schema.org ItemListOrderType URL.
+		 */
+		public static function get_item_list_order( $query ) {
+			$orderby = $query->get( 'orderby', '' );
+			if ( is_string( $orderby ) && 0 === strpos( strtolower( $orderby ), 'rand' ) ) {
+				return 'https://schema.org/ItemListUnordered';
+			}
+
+			$order = $query->get( 'order', '' );
+			$order = is_string( $order ) ? strtoupper( trim( $order ) ) : '';
+
+			// WP_Query sorts DESC unless ASC is requested.
+			return 'ASC' === $order ? 'https://schema.org/ItemListOrderAscending' : 'https://schema.org/ItemListOrderDescending';
+		}
+
+		/**
+		 * Normalizes arbitrary text for JSON-LD usage.
+		 *
+		 * WordPress stores or displays many values entity-encoded (blog name,
+		 * term names, display names, wptexturize'd titles such as `&#8217;`).
+		 * JSON-LD needs plain text, so every string goes through this single
+		 * function: decode all entities first, then strip tags, so encoded
+		 * markup like `&lt;script&gt;` cannot survive as a tag.
 		 *
 		 * @param string $text Raw text.
 		 * @return string
 		 */
 		public static function sanitize_text( $text ) {
-			$text = wp_specialchars_decode( (string) $text );
+			$text = html_entity_decode( (string) $text, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 			$text = wp_strip_all_tags( $text );
 
 			return trim( $text );
@@ -152,7 +211,7 @@ if ( ! class_exists( 'YZRH_Structured_Data_Generator' ) ) {
 
 			$schema = array(
 				'@type' => 'Person',
-				'name'  => get_the_author_meta( 'display_name', $author_id ),
+				'name'  => self::sanitize_text( get_the_author_meta( 'display_name', $author_id ) ),
 			);
 
 			$profile_url = get_author_posts_url( $author_id );
@@ -165,10 +224,12 @@ if ( ! class_exists( 'YZRH_Structured_Data_Generator' ) ) {
 				$schema['description'] = self::sanitize_text( $bio );
 			}
 
-			$image = get_avatar_url( $author_id, array( 'size' => 512 ) );
-			if ( $image ) {
-				$schema['image'] = $image;
-			}
+			/*
+			 * No `image`: get_avatar_url() usually returns a Gravatar URL that
+			 * embeds a hash of the author's e-mail address (AGENTS.md 3-4).
+			 * Projects with self-hosted author photos can add one through the
+			 * `yzrh_structured_data_author` filter below.
+			 */
 
 			$same_as = self::get_author_same_as_profiles( $author_id );
 			if ( ! empty( $same_as ) ) {
@@ -186,7 +247,7 @@ if ( ! class_exists( 'YZRH_Structured_Data_Generator' ) ) {
                 public static function get_publisher_schema() {
                         $schema = array(
                                 '@type' => 'Organization',
-                                'name'  => get_bloginfo( 'name' ),
+                                'name'  => self::sanitize_text( get_bloginfo( 'name' ) ),
                                 'url'   => home_url( '/' ),
                         );
 
@@ -342,13 +403,10 @@ if ( ! class_exists( 'YZRH_Structured_Data_Generator' ) ) {
 /**
  * WebSite schema generator.
  */
-if ( ! defined( 'ABSPATH' ) ) {
-        exit;
-}
 
 if ( ! function_exists( 'yzrh_structured_data_schema_website' ) ) {
         function yzrh_structured_data_schema_website() {
-                $site_name = get_bloginfo( 'name' );
+                $site_name = YZRH_Structured_Data_Generator::sanitize_text( get_bloginfo( 'name' ) );
                 $site_url  = home_url( '/' );
 
                 if ( empty( $site_name ) ) {
@@ -375,13 +433,10 @@ if ( ! function_exists( 'yzrh_structured_data_schema_website' ) ) {
 /**
  * Organization schema generator.
  */
-if ( ! defined( 'ABSPATH' ) ) {
-        exit;
-}
 
 if ( ! function_exists( 'yzrh_structured_data_schema_organization' ) ) {
         function yzrh_structured_data_schema_organization() {
-                $site_name = get_bloginfo( 'name' );
+                $site_name = YZRH_Structured_Data_Generator::sanitize_text( get_bloginfo( 'name' ) );
                 $site_url  = home_url( '/' );
 
                 if ( empty( $site_name ) ) {
@@ -406,9 +461,6 @@ if ( ! function_exists( 'yzrh_structured_data_schema_organization' ) ) {
 /**
  * Article schema generator.
  */
-if ( ! defined( 'ABSPATH' ) ) {
-        exit;
-}
 
 if ( ! function_exists( 'yzrh_structured_data_schema_article' ) ) {
         function yzrh_structured_data_schema_article() {
@@ -430,7 +482,6 @@ if ( ! function_exists( 'yzrh_structured_data_schema_article' ) ) {
                                 '@id'   => $permalink,
                         ),
                         'headline'         => YZRH_Structured_Data_Generator::sanitize_text( get_the_title( $post_id ) ),
-                        'description'      => YZRH_Structured_Data_Generator::get_post_description( $post_id ),
                         'datePublished'    => get_the_date( DATE_W3C, $post_id ),
                         'dateModified'     => get_the_modified_date( DATE_W3C, $post_id ),
                         'author'           => YZRH_Structured_Data_Generator::get_author_schema( $post_id ),
@@ -438,14 +489,19 @@ if ( ! function_exists( 'yzrh_structured_data_schema_article' ) ) {
                         'url'              => $permalink,
                         'isPartOf'         => array(
                                 '@type' => 'Blog',
-                                'name'  => get_bloginfo( 'name' ),
+                                'name'  => YZRH_Structured_Data_Generator::sanitize_text( get_bloginfo( 'name' ) ),
                                 'url'   => home_url( '/' ),
                         ),
                 );
 
+                $description = YZRH_Structured_Data_Generator::get_post_description( $post_id );
+                if ( '' !== $description ) {
+                        $schema['description'] = $description;
+                }
+
                 $primary_category = YZRH_Structured_Data_Generator::get_primary_category( $post_id );
                 if ( $primary_category ) {
-                        $schema['articleSection'] = $primary_category->name;
+                        $schema['articleSection'] = YZRH_Structured_Data_Generator::sanitize_text( $primary_category->name );
                 }
 
                 $image = YZRH_Structured_Data_Generator::get_post_image_object( $post_id );
@@ -459,9 +515,6 @@ if ( ! function_exists( 'yzrh_structured_data_schema_article' ) ) {
 /**
  * Service schema generator.
  */
-if ( ! defined( 'ABSPATH' ) ) {
-        exit;
-}
 
 if ( ! function_exists( 'yzrh_structured_data_schema_service' ) ) {
         function yzrh_structured_data_schema_service() {
@@ -477,11 +530,15 @@ if ( ! function_exists( 'yzrh_structured_data_schema_service' ) ) {
                 $schema = array(
                         '@context'    => 'https://schema.org',
                         '@type'       => 'Service',
-                        'name'        => get_the_title( $post_id ),
-                        'serviceType' => get_the_title( $post_id ),
-                        'description' => YZRH_Structured_Data_Generator::get_post_description( $post_id ),
+                        'name'        => YZRH_Structured_Data_Generator::sanitize_text( get_the_title( $post_id ) ),
+                        'serviceType' => YZRH_Structured_Data_Generator::sanitize_text( get_the_title( $post_id ) ),
                         'provider'    => YZRH_Structured_Data_Generator::get_publisher_schema(),
                 );
+
+                $description = YZRH_Structured_Data_Generator::get_post_description( $post_id );
+                if ( '' !== $description ) {
+                        $schema['description'] = $description;
+                }
 
                 $image = YZRH_Structured_Data_Generator::get_post_image_object( $post_id );
                 if ( $image ) {
@@ -494,9 +551,6 @@ if ( ! function_exists( 'yzrh_structured_data_schema_service' ) ) {
 /**
  * Blog and blog listing schema generators.
  */
-if ( ! defined( 'ABSPATH' ) ) {
-        exit;
-}
 
 if ( ! function_exists( 'yzrh_structured_data_schema_blog' ) ) {
         /**
@@ -555,25 +609,30 @@ if ( ! function_exists( 'yzrh_structured_data_schema_blog_itemlist' ) ) {
                         return null;
                 }
 
-                $items      = array();
-                $posts      = $wp_query->posts;
-                $paged      = max( 1, (int) $wp_query->get( 'paged', 1 ) );
-                $per_page   = (int) $wp_query->get( 'posts_per_page', count( $posts ) );
-                $offset     = $per_page > 0 ? ( ( $paged - 1 ) * $per_page ) : 0;
+                $items    = array();
+                $posts    = $wp_query->posts;
+                $paged    = max( 1, (int) $wp_query->get( 'paged', 1 ) );
+                $position = YZRH_Structured_Data_Generator::get_list_start_offset( $wp_query );
 
-                foreach ( $posts as $index => $post ) {
+                foreach ( $posts as $post ) {
                         if ( 'post' !== get_post_type( $post ) ) {
                                 continue;
                         }
 
-                        $position = $offset + $index + 1;
-                        $items[]  = array(
-                                '@type'       => 'ListItem',
-                                'position'    => $position,
-                                'url'         => get_permalink( $post ),
-                                'name'        => YZRH_Structured_Data_Generator::sanitize_text( get_the_title( $post ) ),
-                                'description' => YZRH_Structured_Data_Generator::get_post_description( $post->ID ),
+                        $position++;
+                        $item = array(
+                                '@type'    => 'ListItem',
+                                'position' => $position,
+                                'url'      => get_permalink( $post ),
+                                'name'     => YZRH_Structured_Data_Generator::sanitize_text( get_the_title( $post ) ),
                         );
+
+                        $description = YZRH_Structured_Data_Generator::get_post_description( $post->ID );
+                        if ( '' !== $description ) {
+                                $item['description'] = $description;
+                        }
+
+                        $items[] = $item;
                 }
 
                 if ( empty( $items ) ) {
@@ -594,8 +653,8 @@ if ( ! function_exists( 'yzrh_structured_data_schema_blog_itemlist' ) ) {
                         '@context'       => 'https://schema.org',
                         '@type'          => 'ItemList',
                         'name'           => YZRH_Structured_Data_Generator::sanitize_text( $archive_title ),
-                        'url'            => get_pagenum_link( $paged ),
-                        'itemListOrder'  => 'https://schema.org/ItemListOrderDescending',
+                        'url'            => get_pagenum_link( $paged, false ),
+                        'itemListOrder'  => YZRH_Structured_Data_Generator::get_item_list_order( $wp_query ),
                         'numberOfItems'  => count( $items ),
                         'itemListElement'=> array_values( $items ),
                 );
@@ -610,9 +669,6 @@ if ( ! function_exists( 'yzrh_structured_data_schema_blog_itemlist' ) ) {
 /**
  * Author profile schema generator.
  */
-if ( ! defined( 'ABSPATH' ) ) {
-        exit;
-}
 
 if ( ! function_exists( 'yzrh_structured_data_schema_author_person' ) ) {
         /**
@@ -649,9 +705,6 @@ if ( ! function_exists( 'yzrh_structured_data_schema_author_person' ) ) {
 /**
  * Interview archive CollectionPage schema generator.
  */
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
 
 if ( ! function_exists( 'yzrh_structured_data_schema_interview_collection' ) ) {
 	/**
@@ -683,53 +736,41 @@ if ( ! function_exists( 'yzrh_structured_data_schema_interview_collection' ) ) {
 			'inLanguage'  => get_bloginfo( 'language' ),
 			'isPartOf'    => array(
 				'@type' => 'WebSite',
-				'name'  => get_bloginfo( 'name' ),
+				'name'  => YZRH_Structured_Data_Generator::sanitize_text( get_bloginfo( 'name' ) ),
 				'url'   => home_url( '/' ),
-			),
-			'breadcrumb'  => array(
-				'@type'           => 'BreadcrumbList',
-				'itemListElement' => array(
-					array(
-						'@type'    => 'ListItem',
-						'position' => 1,
-						'name'     => get_bloginfo( 'name' ),
-						'item'     => home_url( '/' ),
-					),
-					array(
-						'@type'    => 'ListItem',
-						'position' => 2,
-						'name'     => __( 'Interviews', 'yzrh' ),
-						'item'     => $archive_url,
-					),
-				),
 			),
 		);
 
 		global $wp_query;
 		if ( $wp_query instanceof WP_Query && ! empty( $wp_query->posts ) ) {
-			$items      = array();
-			$paged      = max( 1, (int) $wp_query->get( 'paged', 1 ) );
-			$per_page   = (int) $wp_query->get( 'posts_per_page', count( $wp_query->posts ) );
-			$offset     = $per_page > 0 ? ( ( $paged - 1 ) * $per_page ) : 0;
+			$items    = array();
+			$position = YZRH_Structured_Data_Generator::get_list_start_offset( $wp_query );
 
-			foreach ( $wp_query->posts as $index => $post ) {
+			foreach ( $wp_query->posts as $post ) {
 				if ( 'interview' !== get_post_type( $post ) ) {
 					continue;
 				}
 
-				$items[] = array(
-					'@type'       => 'ListItem',
-					'position'    => $offset + $index + 1,
-					'url'         => get_permalink( $post ),
-					'name'        => YZRH_Structured_Data_Generator::sanitize_text( get_the_title( $post ) ),
-					'description' => YZRH_Structured_Data_Generator::get_post_description( $post->ID ),
+				$position++;
+				$item = array(
+					'@type'    => 'ListItem',
+					'position' => $position,
+					'url'      => get_permalink( $post ),
+					'name'     => YZRH_Structured_Data_Generator::sanitize_text( get_the_title( $post ) ),
 				);
+
+				$description = YZRH_Structured_Data_Generator::get_post_description( $post->ID );
+				if ( '' !== $description ) {
+					$item['description'] = $description;
+				}
+
+				$items[] = $item;
 			}
 
 			if ( ! empty( $items ) ) {
 				$schema['mainEntity'] = array(
 					'@type'           => 'ItemList',
-					'itemListOrder'   => 'https://schema.org/ItemListOrderDescending',
+					'itemListOrder'   => YZRH_Structured_Data_Generator::get_item_list_order( $wp_query ),
 					'numberOfItems'   => count( $items ),
 					'itemListElement' => array_values( $items ),
 				);
@@ -742,9 +783,6 @@ if ( ! function_exists( 'yzrh_structured_data_schema_interview_collection' ) ) {
 /**
  * JSON-LD compatibility function layer.
  */
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
 
 if ( ! function_exists( 'yzrh_jsonld_blogposting' ) ) {
 	/**
@@ -886,7 +924,7 @@ function yzrh_breadcrumb() {
 function yzrh_structured_data_schema_breadcrumbs() {
 	$list = array();
 	foreach ( yzrh_get_breadcrumb_items() as $index => $item ) {
-		$list[] = array( '@type' => 'ListItem', 'position' => $index + 1, 'name' => wp_strip_all_tags( $item['name'] ), 'item' => esc_url_raw( $item['url'] ) );
+		$list[] = array( '@type' => 'ListItem', 'position' => $index + 1, 'name' => YZRH_Structured_Data_Generator::sanitize_text( $item['name'] ), 'item' => esc_url_raw( $item['url'] ) );
 	}
 	return array( '@context' => 'https://schema.org', '@type' => 'BreadcrumbList', 'itemListElement' => $list );
 }
@@ -898,11 +936,11 @@ function yzrh_get_ogp_tags() {
 		'og:site_name' => get_bloginfo( 'name' ),
 		'og:title'     => wp_get_document_title(),
 		'og:type'      => is_singular( 'post' ) ? 'article' : 'website',
-		'og:url'       => is_singular() ? get_permalink( $post_id ) : home_url( add_query_arg( array(), $GLOBALS['wp']->request ) ),
+		'og:url'       => is_singular() ? get_permalink( $post_id ) : yzrh_get_current_list_url(),
 		'og:locale'    => str_replace( '_', '-', get_locale() ),
 	);
 	if ( is_singular() ) {
-		$tags['og:description'] = YZRH_Structured_Data_Generator::get_post_description( $post_id );
+		$tags['og:description'] = YZRH_Structured_Data_Generator::get_post_description( $post_id, true );
 		$image = get_the_post_thumbnail_url( $post_id, 'full' );
 		if ( $image ) { $tags['og:image'] = $image; }
 	}
@@ -917,20 +955,111 @@ function yzrh_output_ogp() {
 }
 add_action( 'wp_head', 'yzrh_output_ogp', 4 );
 
-/* WordPress core owns title-tag, canonical output, 404 status and pagination links. */
-$yzrh_schema_map = apply_filters( 'yzrh_jsonld_schema_map', array(
-	'seo_jsonld_website'              => 'yzrh_structured_data_schema_website',
-	'seo_jsonld_organization'         => 'yzrh_structured_data_schema_organization',
-	'seo_jsonld_breadcrumbs'          => 'yzrh_structured_data_schema_breadcrumbs',
-	'seo_jsonld_blogposting'          => 'yzrh_jsonld_blogposting',
-	'seo_jsonld_service'              => 'yzrh_structured_data_schema_service',
-	'seo_jsonld_blog'                 => 'yzrh_structured_data_schema_blog',
-	'seo_jsonld_blog_itemlist'        => 'yzrh_jsonld_blog_itemlist',
-	'seo_jsonld_author'               => 'yzrh_jsonld_author_person',
-	'seo_jsonld_interview_collection' => 'yzrh_structured_data_schema_interview_collection',
-) );
-foreach ( $yzrh_schema_map as $yzrh_setting => $yzrh_callback ) {
-	if ( yzrh_get_setting( $yzrh_setting, true ) ) { YZRH_Structured_Data_Generator::register_schema( $yzrh_callback ); }
+/**
+ * Returns the canonical URL for the interview archive.
+ *
+ * The archive accepts `?order=ASC|DESC`, which renders the same posts in a
+ * different order. The canonical always points at the plain archive URL for
+ * the current page number, so sort variants and tracking parameters are not
+ * indexed as separate pages. Like every theme-generated list URL it has no
+ * trailing slash (see yzrh_get_current_list_url()).
+ *
+ * @return string Canonical URL, or '' when none should be output.
+ */
+function yzrh_get_interview_archive_canonical() {
+	if ( ! is_post_type_archive( 'interview' ) ) {
+		return '';
+	}
+
+	$url = get_post_type_archive_link( 'interview' );
+	if ( ! $url ) {
+		return '';
+	}
+
+	$url   = untrailingslashit( $url );
+	$paged = max( 1, (int) get_query_var( 'paged' ) );
+	if ( $paged > 1 ) {
+		if ( get_option( 'permalink_structure' ) ) {
+			$url .= '/page/' . $paged;
+		} else {
+			$url = add_query_arg( 'paged', $paged, $url );
+		}
+	}
+
+	return (string) apply_filters( 'yzrh_interview_archive_canonical', $url );
 }
-if ( yzrh_get_setting( 'seo_jsonld_enabled', true ) ) { add_action( 'wp_head', 'yzrh_output_jsonld', 5 ); }
-unset( $yzrh_callback, $yzrh_schema_map, $yzrh_setting );
+
+/**
+ * Returns the URL of the current non-singular (list) page for og:url.
+ *
+ * The interview archive reuses its canonical so both always match. Other
+ * lists use the requested path without query string. The theme writes list
+ * URLs without a trailing slash; set the permalink structure without a
+ * trailing slash (e.g. `/%postname%`) so WordPress does not redirect them.
+ *
+ * @return string
+ */
+function yzrh_get_current_list_url() {
+	$canonical = yzrh_get_interview_archive_canonical();
+	if ( '' !== $canonical ) {
+		return $canonical;
+	}
+
+	$request = isset( $GLOBALS['wp'] ) && is_object( $GLOBALS['wp'] ) ? (string) $GLOBALS['wp']->request : '';
+
+	return untrailingslashit( home_url( $request ) );
+}
+
+/**
+ * Prints the interview archive canonical link.
+ *
+ * WordPress core prints canonical links only for singular views, so the theme
+ * covers this archive. Skipped when a major SEO plugin manages canonicals.
+ */
+function yzrh_output_interview_archive_canonical() {
+	$seo_plugin_active = defined( 'WPSEO_VERSION' ) || defined( 'RANK_MATH_VERSION' ) || defined( 'AIOSEO_VERSION' ) || defined( 'SEOPRESS_VERSION' );
+	if ( apply_filters( 'yzrh_output_archive_canonical', ! $seo_plugin_active ) ) {
+		$url = yzrh_get_interview_archive_canonical();
+		if ( '' !== $url ) {
+			printf( "<link rel=\"canonical\" href=\"%s\">\n", esc_url( $url ) );
+		}
+	}
+}
+add_action( 'wp_head', 'yzrh_output_interview_archive_canonical', 4 );
+
+/* WordPress core owns title-tag, singular canonical output, 404 status and pagination links. */
+
+/**
+ * Registers the JSON-LD schema callbacks for the current request.
+ *
+ * Runs on the `wp` action (after the main query is set up, before
+ * `template_redirect` and `wp_head`) instead of when this file is loaded, so
+ * `yzrh_jsonld_schema_map`, `yzrh_core_default_settings` and the stored
+ * settings may be changed from plugins, child themes, `after_setup_theme`,
+ * `init` or `wp` (priority below 10), and callbacks defined after the theme
+ * loads still pass the is_callable() check.
+ */
+function yzrh_register_structured_data_schemas() {
+	$schema_map = apply_filters( 'yzrh_jsonld_schema_map', array(
+		'seo_jsonld_website'              => 'yzrh_structured_data_schema_website',
+		'seo_jsonld_organization'         => 'yzrh_structured_data_schema_organization',
+		'seo_jsonld_breadcrumbs'          => 'yzrh_structured_data_schema_breadcrumbs',
+		'seo_jsonld_blogposting'          => 'yzrh_jsonld_blogposting',
+		'seo_jsonld_service'              => 'yzrh_structured_data_schema_service',
+		'seo_jsonld_blog'                 => 'yzrh_structured_data_schema_blog',
+		'seo_jsonld_blog_itemlist'        => 'yzrh_jsonld_blog_itemlist',
+		'seo_jsonld_author'               => 'yzrh_jsonld_author_person',
+		'seo_jsonld_interview_collection' => 'yzrh_structured_data_schema_interview_collection',
+	) );
+
+	foreach ( (array) $schema_map as $setting => $callback ) {
+		if ( yzrh_get_setting( $setting, true ) ) {
+			YZRH_Structured_Data_Generator::register_schema( $callback );
+		}
+	}
+
+	if ( yzrh_get_setting( 'seo_jsonld_enabled', true ) ) {
+		add_action( 'wp_head', 'yzrh_output_jsonld', 5 );
+	}
+}
+add_action( 'wp', 'yzrh_register_structured_data_schemas' );

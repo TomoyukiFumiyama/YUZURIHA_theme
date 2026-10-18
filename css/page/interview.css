@@ -1,5 +1,25 @@
 @charset "UTF-8";
 
+/*
+ * Theme-bundled fonts (fonts/). No external font service is used.
+ * "NotoSansJP" mirrors the definition in css/style.css so both files
+ * resolve the family to the same files; this file is also loaded as the
+ * block editor style, where css/style.css is not present.
+ */
+@font-face {
+  font-family: "NotoSansJP";
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../../fonts/SourceHanSansJP-VF.otf.woff2") format("woff2"), url("../../fonts/SourceHanSansJP-VF.otf") format("opentype");
+}
+
+@font-face {
+  font-family: "NotoSerifJP";
+  font-weight: 200 900;
+  font-display: swap;
+  src: url("../../fonts/NotoSerifJP-VariableFont_wght.woff2") format("woff2");
+}
+
 *, *::before, *::after { box-sizing: border-box; }
 
 :root {
@@ -15,10 +35,10 @@
   --interview-rose-deep: #c2664b;
   --interview-olive: #6b7a3a;
   --interview-rule: rgba(26, 26, 46, 0.12);
-  --interview-sans: 'Zen Kaku Gothic New', system-ui, sans-serif;
-  --interview-serif: 'Noto Serif JP', 'Hiragino Mincho ProN', serif;
-  --interview-display: 'Fraunces', 'Noto Serif JP', serif;
-  --interview-mono: 'DM Mono', ui-monospace, monospace;
+  --interview-sans: "NotoSansJP", system-ui, sans-serif;
+  --interview-serif: "NotoSerifJP", "Hiragino Mincho ProN", serif;
+  --interview-display: "NotoSerifJP", "Hiragino Mincho ProN", serif;
+  --interview-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 html { scroll-behavior: smooth; }
