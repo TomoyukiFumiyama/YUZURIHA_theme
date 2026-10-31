@@ -322,8 +322,25 @@ function paginate_links( $args = array() ) {
 function get_the_privacy_policy_link() {
 	return '';
 }
-function get_the_post_thumbnail( $post = null, $size = '' ) {
-	return '';
+function get_the_post_thumbnail( $post = null, $size = '', $attr = '' ) {
+	$GLOBALS['yzrh_test']['thumbnails'][] = array( 'post' => $post, 'size' => $size, 'attr' => $attr );
+	return '<img src="https://example.test/thumb-' . ( is_object( $post ) ? $post->ID : $post ) . '.jpg">';
+}
+function update_post_thumbnail_cache( $wp_query = null ) {
+	$GLOBALS['yzrh_test']['calls']['update_post_thumbnail_cache'] = $wp_query;
+}
+function update_post_author_caches( $posts ) {
+	$GLOBALS['yzrh_test']['calls']['update_post_author_caches'] = $posts;
+}
+// オブジェクトキャッシュ（リクエスト内だけ）。yzrh_test_reset() で消える。
+function wp_cache_add_non_persistent_groups( $groups ) {}
+function wp_cache_get( $key, $group = '', $force = false, &$found = null ) {
+	$found = isset( $GLOBALS['yzrh_test']['cache'][ $group ] ) && array_key_exists( $key, $GLOBALS['yzrh_test']['cache'][ $group ] );
+	return $found ? $GLOBALS['yzrh_test']['cache'][ $group ][ $key ] : false;
+}
+function wp_cache_set( $key, $data, $group = '', $expire = 0 ) {
+	$GLOBALS['yzrh_test']['cache'][ $group ][ $key ] = $data;
+	return true;
 }
 function get_the_author_meta( $field = '', $user_id = 0 ) {
 	return 'Author';

@@ -193,7 +193,19 @@ if ( ! function_exists( 'yzrh_interview_archive_card' ) ) {
 			<a class="interview-archive-card__thumb interview-archive-card__thumb--t<?php echo esc_attr( $thumb_mod ); ?>" href="<?php echo esc_url( get_permalink( $post_id ) ); ?>" aria-label="<?php echo esc_attr( get_the_title( $post_id ) ); ?>">
 				<span class="interview-archive-card__thumb-inner">
 					<?php if ( has_post_thumbnail( $post_id ) && ! post_password_required( $post_id ) ) : ?>
-						<?php echo get_the_post_thumbnail( $post_id, 'medium_large' ); ?>
+						<?php
+						// カードは画面の下の方に並ぶため遅延読み込みにする。sizes はグリッドの列幅
+						// （css/page/interview-archive.css: 1 列 ≤700px／2 列 ≤1100px／3 列・最大 1280px）に合わせ、
+						// 必要以上に大きい画像を選ばせない。
+						echo get_the_post_thumbnail(
+							$post_id,
+							'medium_large',
+							array(
+								'loading' => 'lazy',
+								'sizes'   => '(max-width: 700px) calc(100vw - 40px), (max-width: 1100px) calc((100vw - 108px) / 2), (max-width: 1280px) calc((100vw - 152px) / 3), 376px',
+							)
+						);
+						?>
 					<?php endif; ?>
 					<span class="interview-archive-card__pattern" aria-hidden="true"></span>
 				</span>
@@ -217,6 +229,17 @@ if ( ! function_exists( 'yzrh_interview_archive_card' ) ) {
 
 global $wp_query;
 $archive_posts  = $wp_query instanceof WP_Query ? $wp_query->posts : array();
+
+// このテンプレートは the_post() のループを使わないため、WordPress がループ開始時に行う
+// アイキャッチ画像と投稿者のキャッシュの一括読み込みが働かない。カードごとに画像・投稿者を
+// 個別に問い合わせないよう、ここでまとめて読み込む。
+if ( $wp_query instanceof WP_Query ) {
+	update_post_thumbnail_cache( $wp_query );
+}
+if ( ! empty( $archive_posts ) ) {
+	update_post_author_caches( $archive_posts );
+}
+
 $featured_post  = ! empty( $archive_posts ) ? $archive_posts[0] : null;
 $grid_posts     = $featured_post ? array_slice( $archive_posts, 1 ) : $archive_posts;
 $total_posts    = $wp_query instanceof WP_Query ? (int) $wp_query->found_posts : 0;
@@ -338,7 +361,19 @@ $archive_title  = post_type_archive_title( '', false );
 			<article class="interview-archive-featured-card">
 				<a class="interview-archive-featured-card__image" href="<?php echo esc_url( get_permalink( $featured_id ) ); ?>" aria-label="<?php echo esc_attr( get_the_title( $featured_id ) ); ?>">
 					<?php if ( has_post_thumbnail( $featured_id ) && ! post_password_required( $featured_id ) ) : ?>
-						<?php echo get_the_post_thumbnail( $featured_id, 'large' ); ?>
+						<?php
+						// 注目記事の画像は最初の画面に入る主要な画像（LCP の候補）。このテンプレートは
+						// get_header() を呼ばずループの外で画像を出すため、WordPress は画面上部の画像と判定できず
+						// 遅延読み込みにしてしまう。遅延読み込みを外し、優先して読み込ませる。
+						echo get_the_post_thumbnail(
+							$featured_id,
+							'large',
+							array(
+								'loading'       => false,
+								'fetchpriority' => 'high',
+							)
+						);
+						?>
 					<?php endif; ?>
 					<span class="interview-archive-featured-card__badge"><?php esc_html_e( 'Featured', 'yzrh' ); ?></span>
 				</a>

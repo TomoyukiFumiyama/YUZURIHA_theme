@@ -2,6 +2,16 @@
 
 ## 2026-10-31
 
+- 必須バージョンを WordPress 7.1 以上・PHP 8.3 以上に変更（`style.css` の `Requires at least` / `Tested up to` / `Requires PHP`、`AGENTS.md`、README）。隔離検証環境のイメージも PHP 8.3 版（`wordpress:php8.3-apache` / `wordpress:cli-php8.3`）に変更。
+- 高速化の監査に基づく修正:
+  - 全ページ共通の `@font-face`（`css/style.css`・`css/header.css`・`css/footer.css`）に `font-display: swap` を追加し、フォントの読み込み中も文字を表示する（インタビュー用 CSS は指定済み）。フォントのサブセット化は行わない。
+  - 絵文字用のスクリプト・スタイルを既定で停止（`yzrh_disable_emoji_assets` の既定値を true に変更。`__return_false` で戻せる）。WordPress 7.1 でも互換用に残る `print_emoji_styles` と、埋め込み表示用のフックも外す。
+  - インタビュー一覧（`archive-interview.php`）: ループを使わないテンプレートのため、`update_post_thumbnail_cache()` と `update_post_author_caches()` でアイキャッチと投稿者をまとめて読み込み、カードごとの問い合わせをなくす。注目記事の画像は `get_header()` がないため WordPress に遅延読み込みにされていたので、`loading` を外して `fetchpriority="high"` を指定。カードの画像は遅延読み込みにし、グリッドの列幅に合わせた `sizes` を指定。
+  - 抜粋の生成（本文全体の `the_content`）を同じリクエスト内で使い回す `yzrh_get_the_excerpt()` を追加（`inc/helpers.php`。リクエストの間だけ有効なキャッシュグループ）。OGP の説明文（`inc/seo.php`）とインタビュー詳細のリード文で共有し、リード文が入力済みなら抜粋を生成しない（`single-interview.php`）。
+  - インタビュー詳細の読書進捗バーを `requestAnimationFrame` で間引き、ウィンドウサイズの変更でも更新する。
+  - ブロックのスタイルを使われているブロックの分だけ読み込む（`should_load_separate_core_block_assets`。`inc/setup.php`）。
+  - 回帰テストを追加・更新（78 件）。
+
 - セキュリティ診断の F-01: 公開記事のない利用者の筆者ページ（`/?author=ID`・`/author/{スラッグ}`）を 404 にする `YZRH_Security_Hardening::disable_empty_author_archives()`（`template_redirect`）を追加。WordPress は記事のない利用者にも筆者ページを返し、テーマが表示名・自己紹介・サイト URL・スラッグ（Person の JSON-LD と `archive.php`）を公開していたため。`yzrh_404_empty_author_archives` フィルターで無効化できる。
 - セキュリティ診断の F-02: パスワード保護した投稿で、アイキャッチ（`get_post_image_object()`・`og:image`・`single.php`・`single-news.php`・`single-casestudy.php`・`page-templates/job-details.php`・`template-parts/post-list-item.php`・インタビュー一覧）、インタビュー一覧のバイライン（カスタムフィールド）と読了時間を出力しないよう変更。詳細ページだけが保護済みで、他の画面からパスワードなしで読めたため。
 - セキュリティ診断の F-03: パンくず（`yzrh_get_breadcrumb_items()`）から、`is_post_publicly_viewable()` が false の親ページ（非公開・下書き・ゴミ箱）を除外。BreadcrumbList の JSON-LD に非公開ページのタイトルと ID が出ていたため。

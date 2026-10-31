@@ -4,7 +4,7 @@
 #   bash .agents/security-tests/run-all.sh          # 実行後に環境を破棄する
 #   KEEP=1 bash .agents/security-tests/run-all.sh   # 調査用に環境を残す（後で down.sh で破棄）
 #
-# 前提: Docker（ローカルに wordpress:php8.2-apache / wordpress:cli-php8.2 / mariadb:11.4）。
+# 前提: Docker（ローカルに wordpress:php8.3-apache / wordpress:cli-php8.3 / mariadb:11.4）。
 # ネットワークは internal（外部へ出られない）で、ホストにポートを公開しない。
 # 結果は .agents/security-tests/results/ に保存する（機密情報は含まない）。
 set -euo pipefail

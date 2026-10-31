@@ -77,6 +77,13 @@ if ( ! function_exists( 'yzrh_setup' ) ) :
 endif;
 add_action( 'after_setup_theme', 'yzrh_setup' );
 
+/*
+ * ブロックのスタイルを、ページで実際に使われているブロックの分だけ読み込む。
+ * ブロックテーマではない（クラシック）テーマでは、WordPress の既定値が false のため、
+ * 使っていないブロックも含めたスタイルシート（wp-block-library）を全ページで丸ごと読み込んでしまう。
+ */
+add_filter( 'should_load_separate_core_block_assets', '__return_true' );
+
 /**
  * ウィジェットエリア（サイドバー）を登録する（widgets_init）。
  *
