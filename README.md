@@ -15,7 +15,7 @@ WordPress 標準 API を尊重した、拡張可能なオリジナルテーマ�
 - `inc/images.php`: 画像サイズ
 - `inc/cleanup.php`: 不要な head 出力の整理
 - `inc/helpers.php`: 共通設定・ヘルパー
-- `inc/customizer.php`: SNS カスタマイザー
+- `inc/customizer.php`: カスタマイザー（SNS アイコン・Google タグマネージャー）
 
 CSS は `css/header.css`、`css/footer.css`、`css/reset.min.css`、`css/style.css` を共通のまま維持し、ページ固有 CSS を `css/page/`、複数ページで再利用する部品を `css/component/` に配置します。
 
@@ -31,6 +31,7 @@ CSS は `css/header.css`、`css/footer.css`、`css/reset.min.css`、`css/style.c
 - ナビゲーション: 外観 → メニューで `Primary Menu` / `Footer Menu` を割り当て（未割り当て時は非表示）
 - お問い合わせ導線: カスタマイザー「SNSアイコン」の「お問い合わせページのURL」（未設定時は 404・事例詳細のボタンを非表示）
 - SNS アイコン: 同セクションの各 URL（フッターに出力）
+- Google タグマネージャー: カスタマイザー「Google タグマネージャー」の「<head> 内に挿入するコード」「<body> 開始タグ直後に挿入するコード」に、GTM 管理画面の 2 つのスニペットをそのまま貼り付けます（空欄なら出力しません。カスタマイザーのプレビューでは出力しません）。`unfiltered_html` 権限のあるユーザーにだけ表示されるため、マルチサイトのサイト管理者や `DISALLOW_UNFILTERED_HTML` が有効な環境では表示されません
 - プライバシーポリシー: 設定 → プライバシーで指定したページ
 - インタビュー詳細: 各要素はカスタムフィールド入力時のみ表示（既定のサンプル値はありません）
 - 求人詳細テンプレート: 募集要項・選考フロー・応募導線は固定ページ本文で作成

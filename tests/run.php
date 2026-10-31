@@ -1104,6 +1104,60 @@ test( 'SNS links and customizer controls come from one list; mailto opens withou
 	assert_same( '', ob_get_clean(), 'no empty list without any URL' );
 } );
 
+test( 'GTM code is saved only by unfiltered_html users and printed raw in head and body', function () {
+	$customize = new class() {
+		public $sections = array();
+		public $settings = array();
+		public function add_section( $id, $args ) {
+			$this->sections[ $id ] = $args;
+		}
+		public function add_setting( $id, $args ) {
+			$this->settings[ $id ] = $args;
+		}
+		public function add_control( $id, $args ) {}
+	};
+	yzrh_customize_register_tag_manager( $customize );
+	assert_same( 'unfiltered_html', $customize->sections['tag_manager_section']['capability'] );
+	assert_same( array( 'gtm_head_code', 'gtm_body_code' ), array_keys( $customize->settings ) );
+	foreach ( $customize->settings as $args ) {
+		assert_same( 'unfiltered_html', $args['capability'] );
+	}
+
+	$head = "<!-- Google Tag Manager -->\n<script>(function(w,d,s,l,i){w[l]=w[l]||[];})(window,document,'script','dataLayer','GTM-XXXX');</script>\n<!-- End Google Tag Manager -->";
+	$body = '<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-XXXX" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>';
+	assert_same( '', yzrh_sanitize_tag_manager_code( $head ), 'rejected without unfiltered_html' );
+	$GLOBALS['yzrh_test']['caps'] = array( 'unfiltered_html' );
+	assert_same( $head, yzrh_sanitize_tag_manager_code( "  {$head}\n" ) );
+	assert_same( '', yzrh_sanitize_tag_manager_code( array( $head ) ) );
+
+	$GLOBALS['yzrh_test']['theme_mods'] = array(
+		'gtm_head_code' => $head,
+		'gtm_body_code' => $body,
+	);
+	ob_start();
+	yzrh_output_tag_manager_head();
+	assert_same( $head . "\n", ob_get_clean() );
+	ob_start();
+	yzrh_output_tag_manager_body();
+	assert_same( $body . "\n", ob_get_clean() );
+	$source = file_get_contents( YZRH_THEME_DIR . '/inc/customizer.php' );
+	assert_contains( "add_action( 'wp_head', 'yzrh_output_tag_manager_head', 1 );", $source );
+	assert_contains( "add_action( 'wp_body_open', 'yzrh_output_tag_manager_body', 1 );", $source );
+
+	$GLOBALS['yzrh_test']['conditionals'] = array( 'is_customize_preview' );
+	ob_start();
+	yzrh_output_tag_manager_head();
+	yzrh_output_tag_manager_body();
+	assert_same( '', ob_get_clean(), 'not printed in the customizer preview' );
+
+	$GLOBALS['yzrh_test']['conditionals'] = array();
+	$GLOBALS['yzrh_test']['theme_mods']   = array( 'gtm_head_code' => "  \n" );
+	ob_start();
+	yzrh_output_tag_manager_head();
+	yzrh_output_tag_manager_body();
+	assert_same( '', ob_get_clean(), 'nothing printed when empty' );
+} );
+
 test( 'speech block falls back to the host style when speakerStyle sanitizes to empty', function () {
 	$html = yzrh_render_interview_speech_block( array( 'speakerStyle' => '!!!' ) );
 	assert_contains( 'yzrh-interview-speaker is-host', $html );

@@ -2,6 +2,17 @@
 
 このファイルは、Codex に与えられた指示・プロンプトを原文のまま保存するための記録です。
 
+## 2026-10-31（GTM コードのカスタマイザー設定）
+
+> ローカルのブランチを整理して
+
+> テーマカスタマイザーに、GTMのコードを2種類埋め込むための独自項目を追加してください。
+> Adds a section with two text boxes: “<head> 内に挿入するコード” (code for inside <head>) and “<body> 開始タグ直後に挿入するコード” (code for right after the <body> tag). You paste the two snippets from the GTM admin screen into them as they are.
+
+> 日本語で教えて
+
+> コミットしてPR作って
+
 ## 2026-10-18（PR #15 レビュー対応）
 
 > inc/seo.phpの次の内容について修正が必要なら修正して。
