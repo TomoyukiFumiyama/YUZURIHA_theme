@@ -40,6 +40,7 @@ function yzrh_test_reset( array $state = array() ) {
 			'has_post_thumbnail' => false,
 			'template_dir'       => YZRH_THEME_DIR,
 			'loop'               => 0,
+			'caps'               => array(),
 		),
 		$state
 	);
@@ -181,6 +182,9 @@ function get_site_icon_url() {
 function get_theme_mod( $key, $default = false ) {
 	return isset( $GLOBALS['yzrh_test']['theme_mods'][ $key ] ) ? $GLOBALS['yzrh_test']['theme_mods'][ $key ] : $default;
 }
+function current_user_can( $capability, ...$args ) {
+	return in_array( $capability, $GLOBALS['yzrh_test']['caps'], true );
+}
 function get_template_directory() {
 	return $GLOBALS['yzrh_test']['template_dir'];
 }
@@ -202,7 +206,7 @@ function wp_date( $format ) {
 }
 
 // Conditionals: any is_*() listed in $GLOBALS['yzrh_test']['conditionals'] returns true.
-foreach ( array( 'is_admin', 'is_author', 'is_home', 'is_front_page', 'is_category', 'is_tag', 'is_date', 'is_page', 'is_singular', 'is_tax', 'is_search', 'is_404', 'is_post_type_archive', 'is_page_template' ) as $yzrh_conditional ) {
+foreach ( array( 'is_admin', 'is_author', 'is_home', 'is_front_page', 'is_category', 'is_tag', 'is_date', 'is_page', 'is_singular', 'is_tax', 'is_search', 'is_404', 'is_post_type_archive', 'is_page_template', 'is_customize_preview' ) as $yzrh_conditional ) {
 	eval( 'function ' . $yzrh_conditional . '( ...$args ) { return in_array( "' . $yzrh_conditional . '", $GLOBALS["yzrh_test"]["conditionals"], true ); }' ); // phpcs:ignore Squiz.PHP.Eval.Discouraged
 }
 unset( $yzrh_conditional );

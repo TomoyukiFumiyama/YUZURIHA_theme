@@ -1,6 +1,6 @@
 <?php
 /**
- * SNS アイコン用のカスタマイザー設定と出力関数。
+ * カスタマイザー設定（SNS アイコン・Google タグマネージャー）と出力関数。
  *
  * @package yzrh
  */
@@ -149,3 +149,121 @@ function yzrh_output_sns_icons() {
 		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- 各値は上で esc_url() / esc_attr() / esc_html() 済み。
 	}
 }
+
+/**
+ * Google タグマネージャー（GTM）のコードを入れるカスタマイザー設定の一覧を返す。
+ *
+ * キーは設定 ID、値はカスタマイザーの入力欄に表示するラベル。
+ * gtm_head_code は wp_head（<head> 内）、gtm_body_code は wp_body_open（<body> 開始タグ直後）で出力する。
+ *
+ * @return array<string, string>
+ */
+function yzrh_get_tag_manager_settings() {
+	return array(
+		'gtm_head_code' => '<head> 内に挿入するコード',
+		'gtm_body_code' => '<body> 開始タグ直後に挿入するコード',
+	);
+}
+
+/**
+ * カスタマイザーに「Google タグマネージャー」セクションと入力欄を追加する（customize_register）。
+ *
+ * なぜこの形か: GTM の管理画面に表示される 2 つのスニペットを、そのまま貼り付けて使えるようにする。
+ * <script> を含む生の HTML を保存・出力するため、設定の権限を unfiltered_html にし、
+ * 投稿に任意の HTML を書ける管理者だけが入力欄を見て保存できるようにする
+ * （マルチサイトのサイト管理者や DISALLOW_UNFILTERED_HTML が有効な環境では表示されない）。
+ *
+ * @param WP_Customize_Manager $wp_customize カスタマイザーのマネージャー。
+ */
+function yzrh_customize_register_tag_manager( $wp_customize ) {
+
+	$wp_customize->add_section(
+		'tag_manager_section',
+		array(
+			'title'       => 'Google タグマネージャー',
+			'priority'    => 165,
+			'capability'  => 'unfiltered_html',
+			'description' => 'Google タグマネージャーの管理画面に表示される 2 つのコードを、それぞれそのまま貼り付けてください。<br>空欄の場合は出力されません。',
+		)
+	);
+
+	foreach ( yzrh_get_tag_manager_settings() as $setting_id => $label ) {
+		$wp_customize->add_setting(
+			$setting_id,
+			array(
+				'default'           => '',
+				'capability'        => 'unfiltered_html',
+				'sanitize_callback' => 'yzrh_sanitize_tag_manager_code',
+			)
+		);
+
+		$wp_customize->add_control(
+			$setting_id,
+			array(
+				'label'   => $label,
+				'section' => 'tag_manager_section',
+				'type'    => 'textarea',
+			)
+		);
+	}
+}
+add_action( 'customize_register', 'yzrh_customize_register_tag_manager' );
+
+/**
+ * GTM のコードを保存前にサニタイズする（sanitize_callback）。
+ *
+ * なぜこの形か: GTM のスニペットは <script> / <iframe> を含むため、wp_kses 系で除去すると動かなくなる。
+ * そのため HTML はそのまま保存し、代わりに unfiltered_html 権限を持たないユーザーからの値は捨てる
+ * （設定の capability でも弾かれるが、念のため保存処理側でも確認する）。
+ *
+ * @param mixed $value 入力値。
+ * @return string 保存する値。
+ */
+function yzrh_sanitize_tag_manager_code( $value ) {
+	if ( ! is_string( $value ) || ! current_user_can( 'unfiltered_html' ) ) {
+		return '';
+	}
+	return trim( $value );
+}
+
+/**
+ * 指定した GTM 設定のコードを出力する。
+ *
+ * カスタマイザーのプレビューでは出力しない。プレビュー画面の表示が GTM 経由で
+ * アクセス解析に計測されないようにするため。
+ *
+ * @param string $setting_id yzrh_get_tag_manager_settings() のキー。
+ */
+function yzrh_output_tag_manager_code( $setting_id ) {
+	if ( is_customize_preview() ) {
+		return;
+	}
+
+	$code = get_theme_mod( $setting_id, '' );
+	if ( ! is_string( $code ) || '' === trim( $code ) ) {
+		return;
+	}
+
+	echo $code . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- unfiltered_html 権限のユーザーだけが保存できる GTM のスニペットを、意図どおりそのまま出力する。
+}
+
+/**
+ * <head> 内に GTM のコードを出力する（wp_head）。
+ *
+ * GTM の推奨どおりできるだけ <head> の上の方に出すため、優先度 1 で実行する。
+ */
+function yzrh_output_tag_manager_head() {
+	yzrh_output_tag_manager_code( 'gtm_head_code' );
+}
+add_action( 'wp_head', 'yzrh_output_tag_manager_head', 1 );
+
+/**
+ * <body> 開始タグ直後に GTM のコード（noscript）を出力する（wp_body_open）。
+ *
+ * テーマのテンプレートは <body> の直後で wp_body_open() を呼んでいる
+ * （header.php / archive-interview.php / single-interview.php）。
+ */
+function yzrh_output_tag_manager_body() {
+	yzrh_output_tag_manager_code( 'gtm_body_code' );
+}
+add_action( 'wp_body_open', 'yzrh_output_tag_manager_body', 1 );
