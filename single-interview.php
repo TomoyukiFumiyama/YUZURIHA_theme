@@ -45,7 +45,11 @@ $post_id      = get_queried_object_id();
 $is_protected = post_password_required( $post_id );
 $issue        = yzrh_interview_meta( 'interview_issue' );
 $kicker       = yzrh_interview_meta( 'interview_kicker' );
-$lead         = $is_protected ? '' : yzrh_interview_meta( 'interview_lead', get_the_excerpt( $post_id ) );
+$lead         = $is_protected ? '' : yzrh_interview_meta( 'interview_lead' );
+// リード文が未入力のときだけ抜粋を使う。入力済みなら重い抜粋の生成（本文全体の the_content）を省く。
+if ( ! $is_protected && '' === $lead ) {
+	$lead = yzrh_get_the_excerpt( $post_id );
+}
 
 $default_title_html = esc_html( get_the_title( $post_id ) );
 $title_html         = yzrh_interview_meta( 'interview_hero_title_html', $default_title_html );
@@ -192,13 +196,23 @@ $closing_url    = yzrh_interview_meta( 'interview_closing_url' );
 <script>
 (function () {
 	const progress = document.getElementById('interview-progress');
+	let scheduled = false;
 	function updateProgress() {
+		scheduled = false;
 		const h = document.documentElement;
 		const max = h.scrollHeight - h.clientHeight;
 		const pct = max > 0 ? (h.scrollTop / max) * 100 : 0;
 		if (progress) progress.style.width = pct + '%';
 	}
-	window.addEventListener('scroll', updateProgress, { passive: true });
+	// スクロールのたびに計算せず、描画 1 回につき 1 回だけ更新する（スクロール中の負荷を抑える）。
+	function scheduleUpdate() {
+		if (!scheduled) {
+			scheduled = true;
+			window.requestAnimationFrame(updateProgress);
+		}
+	}
+	window.addEventListener('scroll', scheduleUpdate, { passive: true });
+	window.addEventListener('resize', scheduleUpdate, { passive: true });
 	updateProgress();
 
 	if (!('IntersectionObserver' in window)) {

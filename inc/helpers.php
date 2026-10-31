@@ -75,6 +75,32 @@ if ( ! function_exists( 'yzrh_interview_archive_description' ) ) {
 }
 
 /**
+ * 投稿の抜粋（get_the_excerpt() の結果）を返す。同じリクエストの中では 2 回目以降に結果を使い回す。
+ *
+ * なぜ必要か: 手動の抜粋がない投稿では、get_the_excerpt() が本文全体に `the_content` フィルター
+ * （ブロックの描画・ショートコードなど）をかけて抜粋を作るため重い。インタビュー詳細では
+ * リード文（single-interview.php）と OGP の説明文（inc/seo.php）が同じ抜粋を使うため、1 回で済ませる。
+ * 保存先はリクエストの間だけ有効なキャッシュグループ（永続オブジェクトキャッシュにも保存しない）なので、
+ * 投稿を更新しても古い抜粋が残ることはなく、パスワード入力の有無による違いも閲覧者ごとに正しく扱われる。
+ *
+ * @param int $post_id 投稿 ID。
+ * @return string
+ */
+function yzrh_get_the_excerpt( $post_id ) {
+	wp_cache_add_non_persistent_groups( 'yzrh_excerpts' );
+
+	$post_id = (int) $post_id;
+	$found   = false;
+	$excerpt = wp_cache_get( $post_id, 'yzrh_excerpts', false, $found );
+	if ( ! $found ) {
+		$excerpt = (string) get_the_excerpt( $post_id );
+		wp_cache_set( $post_id, $excerpt, 'yzrh_excerpts' );
+	}
+
+	return $excerpt;
+}
+
+/**
  * テーマ設定の値を 1 つ返す。
  *
  * なぜ必要か: 各機能が設定配列の構造を知らなくても、キーだけで値を取り出せるようにする。

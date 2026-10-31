@@ -133,7 +133,8 @@ if ( ! class_exists( 'YZRH_Structured_Data_Generator' ) ) {
 				return '';
 			}
 
-			return wp_trim_words( self::sanitize_text( get_the_excerpt( $post_id ) ), 55 );
+			// 生成は重いため、同じリクエスト内でリード文などと結果を共有する（inc/helpers.php）。
+			return wp_trim_words( self::sanitize_text( yzrh_get_the_excerpt( $post_id ) ), 55 );
 		}
 
 		/**

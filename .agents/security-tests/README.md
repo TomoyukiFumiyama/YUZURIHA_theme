@@ -20,7 +20,7 @@
 
 ## 実行方法
 
-前提: Docker（ローカルに `wordpress:php8.2-apache`・`wordpress:cli-php8.2`・`mariadb:11.4` のイメージ）。初回はイメージのダウンロードが必要になる場合がある。
+前提: Docker（ローカルに `wordpress:php8.3-apache`・`wordpress:cli-php8.3`・`mariadb:11.4` のイメージ）。初回はイメージのダウンロードが必要になる場合がある。テーマの必須バージョンが PHP 8.3 のため、PHP 8.2 以下のイメージではテーマを有効化できない。
 
 ```bash
 bash .agents/security-tests/run-all.sh

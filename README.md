@@ -25,7 +25,7 @@ CSS は `css/header.css`、`css/footer.css`、`css/reset.min.css`、`css/style.c
 
 テンプレートには案件固有のロゴ・リンク・文言を直書きしません。次の WordPress 標準設定から表示されます。
 
-- 動作環境: WordPress 6.3 以上（インタビュー用ブロックが Block API v3 を使うため）
+- 動作環境: WordPress 7.1 以上、PHP 8.3 以上
 - ロゴ: カスタマイザー →「サイト基本情報」→「ロゴ」で設定（未設定時はサイト名を表示）。推奨サイズは `yzrh_custom_logo_args` フィルターで変更できます
 - パーマリンク: 設定 → パーマリンクで、**末尾スラッシュのない構造（例: `/%postname%`）** を選んでください。テーマが出力する一覧ページの canonical と `og:url` は末尾スラッシュなしで統一しています。末尾スラッシュ付きの構造のままだと、WordPress がスラッシュなしの URL をリダイレクトし、canonical がリダイレクトされる URL を指してしまいます
 - ナビゲーション: 外観 → メニューで `Primary Menu` / `Footer Menu` を割り当て（未割り当て時は非表示）
@@ -113,7 +113,16 @@ function project_schema_product() {
 - `NotoSerifJP`: `fonts/NotoSerifJP-VariableFont_wght.woff2`（インタビュー CSS の明朝・見出し）
 - 等幅: OS 標準の等幅フォント
 
-日本語フォントはサブセット化していないため、1 ファイルあたり数 MB あります。公開前に、使用する文字だけを含むサブセットや `unicode-range` で分割したファイルを用意することを推奨します。
+すべての `@font-face` に `font-display: swap` を指定しているため、フォントの読み込み中も代替フォントで文字を表示します（読み込み後にフォントが切り替わります）。
+
+日本語フォントはサブセット化していないため、1 ファイルあたり数 MB あります（本文用 約 4 MB、インタビューの明朝体 約 5.8 MB）。転送量を減らす場合は、使用する文字だけを含むサブセットや `unicode-range` で分割したファイルを用意してください。
+
+## 表示速度に関する既定の動作
+
+- 絵文字用のスクリプト・スタイルは既定で停止しています（下の「JavaScript とセキュリティ」を参照）。
+- ブロックのスタイルは、ページで使われているブロックの分だけ読み込みます（`should_load_separate_core_block_assets`。`inc/setup.php`）。
+- インタビュー一覧では、アイキャッチ画像と投稿者の情報をまとめて読み込み、カードごとの問い合わせを避けます。注目記事の画像は遅延読み込みにせず優先して読み込み、カードの画像は遅延読み込みにしてグリッドの列幅に合った `sizes` を指定します。
+- 手動の抜粋がない投稿の抜粋は、同じリクエストの中で使い回します（`yzrh_get_the_excerpt()`。リクエストの間だけ有効なキャッシュで、保存はしません）。インタビュー詳細では、リード文が入力されていれば抜粋を生成しません。
 
 ## アセットの版数
 
@@ -166,7 +175,7 @@ location ~ /\.                                                  { deny all; }
 - テーマ内 JavaScript は jQuery に依存しないバニラ JavaScriptです。ブロックエディター用コードは WordPress が提供する `window.wp` API のみを利用します。
 - XML-RPC、pingback、WordPress の generator バージョン出力を停止します。
 - `yzrh_security_headers` フィルターの戻り値は検証してから送ります。不正な名前、スカラー以外の値、改行を含む値は送らないため、フィルターの不具合でページが致命的エラーになることはありません。
-- 絵文字アセットは `add_filter( 'yzrh_disable_emoji_assets', '__return_true' );` で停止できます（`wp` アクションで評価するため、`init` などで登録しても有効です）。
+- 絵文字アセット（検出スクリプトとスタイル）は既定で停止しています。必要なサイトでは `add_filter( 'yzrh_disable_emoji_assets', '__return_false' );` で元に戻せます（`wp` アクションで評価するため、`init` などで登録しても有効です）。
 - HSTS（`Strict-Transport-Security`）は HTTPS のときだけ `max-age=31536000` を送ります。`includeSubDomains` と `preload` は既定では付けません。全サブドメインの HTTPS 化を確認した案件だけ、`yzrh_hsts_directives` フィルターで有効にしてください。サーバーや CDN で設定する場合は、フィルターで `false` を返してテーマからの送信を止めます。
 
 ```php

@@ -145,7 +145,7 @@ Codex は以下のスキーマを採用する。
 ## 5. 技術的制約（Technical Constraints）
 
 - テーマは WordPress 標準のテンプレート階層を前提とする
-- PHP バージョンは 7 以上を想定
+- WordPress 7.1 以上、PHP 8.3 以上を想定（`style.css` の `Requires at least` / `Requires PHP` と一致させる）
 - 外部ライブラリは使わず、標準 PHP + WordPress 関数のみで実装する
 - JSON-LD の `<script type="application/ld+json">` は `wp_head` 内に出力する
 

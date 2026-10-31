@@ -868,7 +868,9 @@ test( 'interview blocks use Block API v3 on both PHP and JS sides', function () 
 	assert_same( 2, substr_count( $js, 'useBlockProps({' ), 'v2+ blocks must use useBlockProps()' );
 
 	$style = file_get_contents( YZRH_THEME_DIR . '/style.css' );
-	assert_contains( 'Requires at least: 6.3', $style, 'Block API v3 needs WordPress 6.3+' );
+	// Block API v3 は WordPress 6.3+。テーマの必須バージョン（7.1 / PHP 8.3）はそれを満たす。
+	assert_contains( 'Requires at least: 7.1', $style );
+	assert_contains( 'Requires PHP: 8.3', $style );
 } );
 
 /* -------------------------------------------------------------------------
@@ -923,22 +925,24 @@ test( 'emoji filter is evaluated on wp, not at file load', function () {
 	global $yzrh_boot_filters;
 	assert_contains( 'yzrh_maybe_disable_emoji_assets', implode( ',', array_filter( $yzrh_boot_filters['wp'], 'is_string' ) ) );
 
-	// Added after load (e.g. on init): must still take effect.
-	add_filter( 'yzrh_disable_emoji_assets', '__return_true' );
+	// 既定で停止する。print_emoji_styles は互換性のため本体に残っており、
+	// wp_enqueue_emoji_styles を止めると単独で出力されてしまうため、一緒に外す。
 	yzrh_maybe_disable_emoji_assets();
 	$removed = array_map(
 		function ( $r ) {
-			return $r[1];
+			return $r[0] . ':' . $r[1];
 		},
 		$GLOBALS['yzrh_test']['removed']
 	);
-	foreach ( array( 'print_emoji_detection_script', 'print_emoji_styles', 'wp_enqueue_emoji_styles' ) as $callback ) {
-		assert_same( true, in_array( $callback, $removed, true ), $callback );
+	foreach ( array( 'wp_head:print_emoji_detection_script', 'wp_print_styles:print_emoji_styles', 'wp_enqueue_scripts:wp_enqueue_emoji_styles', 'embed_head:print_emoji_detection_script', 'enqueue_embed_scripts:wp_enqueue_emoji_styles' ) as $hook ) {
+		assert_same( true, in_array( $hook, $removed, true ), $hook );
 	}
 
+	// Added after load (e.g. on init): must still take effect.
 	yzrh_test_reset();
+	add_filter( 'yzrh_disable_emoji_assets', '__return_false' );
 	yzrh_maybe_disable_emoji_assets();
-	assert_same( false, isset( $GLOBALS['yzrh_test']['removed'] ), 'default keeps emoji assets' );
+	assert_same( false, isset( $GLOBALS['yzrh_test']['removed'] ), 'the filter can keep emoji assets' );
 } );
 
 /* -------------------------------------------------------------------------
@@ -1278,6 +1282,66 @@ test( 'F-04: repository-only files are excluded from archives and denied by Apac
 	foreach ( array( '/wp-content/themes/yzrh/css/style.css', '/wp-content/themes/yzrh/js/tests.js', '/wp-content/themes/yzrh/assets/latest/a.css' ) as $path ) {
 		assert_same( 0, preg_match( $pattern, $path ), "{$path} is served" );
 	}
+} );
+
+/* -------------------------------------------------------------------------
+ * 2026-10-31: 表示速度の改善
+ * ---------------------------------------------------------------------- */
+
+test( 'every @font-face uses font-display: swap', function () {
+	$files = array_merge( glob( YZRH_THEME_DIR . '/css/*.css' ), glob( YZRH_THEME_DIR . '/css/*/*.css' ) );
+	$count = 0;
+	foreach ( $files as $file ) {
+		preg_match_all( '/@font-face\s*\{[^}]*\}/', file_get_contents( $file ), $rules );
+		foreach ( $rules[0] as $rule ) {
+			$count++;
+			assert_contains( 'font-display: swap', $rule, $file );
+		}
+	}
+	assert_same( true, $count >= 7, 'font-face rules found: ' . $count );
+} );
+
+test( 'block styles are loaded only for blocks rendered on the page', function () {
+	global $yzrh_boot_filters;
+	$callbacks = isset( $yzrh_boot_filters['should_load_separate_core_block_assets'] ) ? $yzrh_boot_filters['should_load_separate_core_block_assets'] : array();
+	assert_same( true, in_array( '__return_true', $callbacks, true ) );
+} );
+
+test( 'a generated excerpt is built once per post per request and shared with the OGP description', function () {
+	yzrh_test_reset( array( 'excerpt' => 'Generated excerpt' ) );
+	assert_same( 'Generated excerpt', yzrh_get_the_excerpt( 5 ) );
+	assert_same( 'Generated excerpt', yzrh_get_the_excerpt( 5 ) );
+	assert_same( 'Generated excerpt', YZRH_Structured_Data_Generator::get_post_description( 5, true ) );
+	assert_same( 1, $GLOBALS['yzrh_test']['calls']['get_the_excerpt'] );
+
+	yzrh_get_the_excerpt( 6 );
+	assert_same( 2, $GLOBALS['yzrh_test']['calls']['get_the_excerpt'], 'each post has its own entry' );
+} );
+
+test( 'interview lead skips excerpt generation when the lead field is filled in', function () {
+	yzrh_test_interview_state( false );
+	$html = yzrh_test_render( 'single-interview.php' );
+	assert_contains( 'SECRET-LEAD', $html );
+	assert_same( false, isset( $GLOBALS['yzrh_test']['calls']['get_the_excerpt'] ), 'get_the_excerpt() must not run' );
+
+	yzrh_test_interview_state( false );
+	unset( $GLOBALS['yzrh_test']['meta']['interview_lead'] );
+	$html = yzrh_test_render( 'single-interview.php' );
+	assert_contains( 'SECRET-EXCERPT', $html, 'falls back to the excerpt' );
+} );
+
+test( 'interview archive primes thumbnail and author caches and prioritises the featured image', function () {
+	yzrh_test_render_interview_archive( array( 'has_post_thumbnail' => true ) );
+	assert_same( true, $GLOBALS['yzrh_test']['calls']['update_post_thumbnail_cache'] instanceof WP_Query );
+	assert_same( 2, count( $GLOBALS['yzrh_test']['calls']['update_post_author_caches'] ) );
+
+	$by_size = array();
+	foreach ( $GLOBALS['yzrh_test']['thumbnails'] as $thumbnail ) {
+		$by_size[ $thumbnail['size'] ] = $thumbnail['attr'];
+	}
+	assert_same( array( 'loading' => false, 'fetchpriority' => 'high' ), $by_size['large'], 'featured image' );
+	assert_same( 'lazy', $by_size['medium_large']['loading'], 'card image' );
+	assert_contains( '(max-width: 700px)', $by_size['medium_large']['sizes'] );
 } );
 
 /* ---------------------------------------------------------------------- */
