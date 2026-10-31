@@ -1,0 +1,5 @@
+# git archive（本番用 ZIP の作成）で、開発用のファイルを自動的に除外する。
+/.agents        export-ignore
+/tests          export-ignore
+/AGENTS.md      export-ignore
+/.gitattributes export-ignore

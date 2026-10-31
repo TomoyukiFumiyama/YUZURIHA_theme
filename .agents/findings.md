@@ -5,6 +5,18 @@
 - 再現環境: 隔離した Docker 環境（WordPress 7.1.3 / PHP 8.2.34 / Apache 2.4.68 / MariaDB 11.4、外部ネットワークなし、ダミーデータのみ）。構成は [wordpress-inventory.md](wordpress-inventory.md)
 - 再現テスト: [security-tests/](security-tests/)（`bash .agents/security-tests/run-all.sh`）。修正前の結果は `security-tests/results/current/`、修正案を当てたコピーの結果は `security-tests/results/proposed-fix/`
 
+## 対応状況（2026-10-31 更新）
+
+F-01〜F-04 は、ブランチ `fix/security-2026-10-31` で修正済み（**未マージ**）。修正内容は `security-tests/proposed-fix.patch` と同じ。加えて、テーマの回帰テスト（`tests/run.php`）に F-01〜F-04 の 6 件を追加し、README を更新した。
+
+| 確認 | 結果 |
+|---|---|
+| 隔離環境の HTTP テスト（ブランチの作業ツリーをマウント。`security-tests/results/fix-branch/`） | 17 成功・0 失敗・参考 3（F-01〜F-04 の再現テストと、対照テスト 5 件がすべて成功） |
+| 隔離環境の統合テスト | 10 成功・0 失敗 |
+| `php tests/run.php` | 73 成功（追加の 6 件は、修正前のコードではすべて失敗することを確認） |
+
+参考情報 I-01〜I-05 は、サイトの方針に合わせて判断する項目のため、このブランチでは変更していない。
+
 ## 分類と件数
 
 | 状態 | 件数 | 内容 |

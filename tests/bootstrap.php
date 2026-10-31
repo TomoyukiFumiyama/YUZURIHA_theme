@@ -234,6 +234,9 @@ function the_ID() {
 	echo 1;
 }
 function get_the_title( $post = 0 ) {
+	if ( is_int( $post ) && isset( $GLOBALS['yzrh_test']['titles'][ $post ] ) ) {
+		return $GLOBALS['yzrh_test']['titles'][ $post ];
+	}
 	return isset( $GLOBALS['yzrh_test']['title'] ) ? $GLOBALS['yzrh_test']['title'] : 'Post Title';
 }
 function the_title( $before = '', $after = '' ) {
@@ -251,6 +254,22 @@ function get_post_field( $field, $post = 0 ) {
 		return isset( $GLOBALS['yzrh_test']['manual_excerpt'] ) ? $GLOBALS['yzrh_test']['manual_excerpt'] : '';
 	}
 	return 'Body';
+}
+function get_post_thumbnail_id( $post = null ) {
+	return isset( $GLOBALS['yzrh_test']['thumbnail_id'] ) ? $GLOBALS['yzrh_test']['thumbnail_id'] : 0;
+}
+function get_post_ancestors( $post ) {
+	return isset( $GLOBALS['yzrh_test']['ancestors'] ) ? $GLOBALS['yzrh_test']['ancestors'] : array();
+}
+// Posts listed in 'non_public_posts' are private / draft / trashed.
+function is_post_publicly_viewable( $post = null ) {
+	return ! in_array( $post, isset( $GLOBALS['yzrh_test']['non_public_posts'] ) ? $GLOBALS['yzrh_test']['non_public_posts'] : array(), true );
+}
+function status_header( $code ) {
+	$GLOBALS['yzrh_test']['calls']['status_header'] = $code;
+}
+function nocache_headers() {
+	$GLOBALS['yzrh_test']['calls']['nocache_headers'] = true;
 }
 
 // Taxonomies / archive helpers used by archive-interview.php.
@@ -319,7 +338,10 @@ function get_permalink( $post = 0 ) {
 	return 'https://example.test/post/';
 }
 function get_post_type( $post = null ) {
-	return ( $post instanceof WP_Post && $post->post_type ) ? $post->post_type : 'post';
+	if ( $post instanceof WP_Post && $post->post_type ) {
+		return $post->post_type;
+	}
+	return isset( $GLOBALS['yzrh_test']['post_type'] ) ? $GLOBALS['yzrh_test']['post_type'] : 'post';
 }
 function get_post_type_archive_link( $post_type ) {
 	return 'https://example.test/interviews/';
@@ -361,7 +383,7 @@ function wp_get_attachment_image_src( $attachment_id, $size = 'thumbnail' ) {
 	return isset( $GLOBALS['yzrh_test']['attachments'][ $attachment_id ] ) ? $GLOBALS['yzrh_test']['attachments'][ $attachment_id ] : false;
 }
 function get_the_post_thumbnail_url( $post = null, $size = '' ) {
-	return false;
+	return isset( $GLOBALS['yzrh_test']['thumbnail_url'] ) ? $GLOBALS['yzrh_test']['thumbnail_url'] : false;
 }
 function get_author_posts_url( $author_id ) {
 	return 'https://example.test/author/a';
@@ -408,8 +430,12 @@ class WP_Query {
 	public $vars          = array();
 	public $found_posts   = 0;
 	public $max_num_pages = 0;
+	public $is_404        = false;
 	public function get( $key, $default = '' ) {
 		return array_key_exists( $key, $this->vars ) ? $this->vars[ $key ] : $default;
+	}
+	public function set_404() {
+		$this->is_404 = true;
 	}
 }
 

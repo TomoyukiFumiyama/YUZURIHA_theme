@@ -1164,6 +1164,122 @@ test( 'speech block falls back to the host style when speakerStyle sanitizes to 
 	assert_not_contains( 'is- ', $html );
 } );
 
+/* -------------------------------------------------------------------------
+ * 2026-10-31 セキュリティ診断 F-01〜F-04（.agents/findings.md）
+ * ---------------------------------------------------------------------- */
+
+test( 'F-01: author archives without posts become 404; authors with posts and the opt-out are untouched', function () {
+	$GLOBALS['yzrh_test']['conditionals'] = array( 'is_author' );
+	$GLOBALS['yzrh_test']['loop']         = 1; // have_posts() === false
+	$GLOBALS['wp_query']                  = new WP_Query();
+	YZRH_Security_Hardening::disable_empty_author_archives();
+	assert_same( true, $GLOBALS['wp_query']->is_404, 'empty author archive' );
+	assert_same( 404, $GLOBALS['yzrh_test']['calls']['status_header'] );
+	assert_same( true, $GLOBALS['yzrh_test']['calls']['nocache_headers'] );
+
+	$GLOBALS['yzrh_test']['calls'] = array();
+	$GLOBALS['wp_query']           = new WP_Query();
+	$GLOBALS['yzrh_test']['loop']  = 0; // have_posts() === true
+	YZRH_Security_Hardening::disable_empty_author_archives();
+	assert_same( false, $GLOBALS['wp_query']->is_404, 'author with posts' );
+	assert_same( false, isset( $GLOBALS['yzrh_test']['calls']['status_header'] ) );
+
+	$GLOBALS['yzrh_test']['loop']         = 1;
+	$GLOBALS['yzrh_test']['conditionals'] = array( 'is_category' );
+	YZRH_Security_Hardening::disable_empty_author_archives();
+	assert_same( false, $GLOBALS['wp_query']->is_404, 'empty category archives are left to WordPress' );
+
+	$GLOBALS['yzrh_test']['conditionals'] = array( 'is_author' );
+	add_filter( 'yzrh_404_empty_author_archives', '__return_false' );
+	YZRH_Security_Hardening::disable_empty_author_archives();
+	assert_same( false, $GLOBALS['wp_query']->is_404, 'opt-out filter' );
+
+	assert_contains( "add_action( 'template_redirect', array( __CLASS__, 'disable_empty_author_archives' ) );", file_get_contents( YZRH_THEME_DIR . '/inc/security.php' ) );
+} );
+
+test( 'F-02: password-protected posts expose no cover image in JSON-LD or og:image', function () {
+	$GLOBALS['yzrh_test']['attachments']   = array( 11 => array( 'https://example.test/cover.jpg', 1200, 630, false ) );
+	$GLOBALS['yzrh_test']['thumbnail_id']  = 11;
+	$GLOBALS['yzrh_test']['thumbnail_url'] = 'https://example.test/cover.jpg';
+	$GLOBALS['yzrh_test']['conditionals']  = array( 'is_singular' );
+
+	assert_same( 'https://example.test/cover.jpg', YZRH_Structured_Data_Generator::get_post_image_object( 1 )['url'], 'public post keeps its image' );
+	assert_same( 'https://example.test/cover.jpg', yzrh_get_ogp_tags()['og:image'], 'public post keeps og:image' );
+
+	$GLOBALS['yzrh_test']['password_required'] = true;
+	assert_same( null, YZRH_Structured_Data_Generator::get_post_image_object( 1 ) );
+	assert_same( false, isset( yzrh_get_ogp_tags()['og:image'] ), 'og:image of a protected post' );
+} );
+
+test( 'F-02: templates hide cover images of password-protected posts', function () {
+	foreach ( array( 'single.php', 'single-news.php', 'single-casestudy.php', 'page-templates/job-details.php', 'template-parts/post-list-item.php' ) as $file ) {
+		assert_contains( 'has_post_thumbnail() && ! post_password_required()', file_get_contents( YZRH_THEME_DIR . '/' . $file ), $file );
+	}
+} );
+
+test( 'F-02: the interview archive does not use custom fields, length or cover of protected interviews', function () {
+	$meta = array(
+		'interview_byline_name' => 'SECRET-NAME',
+		'interview_byline_role' => 'SECRET-ROLE',
+		'interview_read_time'   => '12 min',
+	);
+	$html = yzrh_test_render_interview_archive( array( 'meta' => $meta, 'password_required' => true, 'has_post_thumbnail' => true ) );
+	assert_not_contains( 'SECRET-NAME', $html );
+	assert_not_contains( 'SECRET-ROLE', $html );
+	assert_not_contains( '12 min', $html );
+	assert_same( '', yzrh_interview_archive_read_time( 1 ) );
+	assert_same( 'Author', yzrh_interview_archive_byline( 1 )['name'], 'falls back to the author display name' );
+
+	$html = yzrh_test_render_interview_archive( array( 'meta' => $meta, 'password_required' => false ) );
+	assert_contains( 'SECRET-NAME', $html, 'public interviews keep their byline' );
+	assert_contains( '12 min', $html );
+
+	$template = file_get_contents( YZRH_THEME_DIR . '/archive-interview.php' );
+	assert_contains( 'has_post_thumbnail( $post_id ) && ! post_password_required( $post_id )', $template );
+	assert_contains( 'has_post_thumbnail( $featured_id ) && ! post_password_required( $featured_id )', $template );
+} );
+
+test( 'F-03: breadcrumbs skip private, draft and trashed ancestors', function () {
+	$GLOBALS['yzrh_test']['conditionals']     = array( 'is_singular' );
+	$GLOBALS['yzrh_test']['post_type']        = 'page';
+	$GLOBALS['yzrh_test']['ancestors']        = array( 30, 20 ); // 親 → 祖父母の順（get_post_ancestors() と同じ）。
+	$GLOBALS['yzrh_test']['titles']           = array( 20 => 'PUBLIC-GRANDPARENT', 30 => 'SECRET-PARENT', 1 => 'Child' );
+	$GLOBALS['yzrh_test']['non_public_posts'] = array( 30 );
+
+	$names = array_column( yzrh_get_breadcrumb_items(), 'name' );
+	assert_same( array( 'Example Site', 'PUBLIC-GRANDPARENT', 'Child' ), $names );
+
+	$GLOBALS['yzrh_test']['non_public_posts'] = array();
+	$names = array_column( yzrh_get_breadcrumb_items(), 'name' );
+	assert_same( array( 'Example Site', 'PUBLIC-GRANDPARENT', 'SECRET-PARENT', 'Child' ), $names, 'public ancestors stay' );
+} );
+
+test( 'F-04: repository-only files are excluded from archives and denied by Apache', function () {
+	$attributes = file_get_contents( YZRH_THEME_DIR . '/.gitattributes' );
+	foreach ( array( '/.agents', '/tests', '/AGENTS.md' ) as $path ) {
+		assert_same( 1, preg_match( '#^' . preg_quote( $path, '#' ) . '\s+export-ignore\r?$#m', $attributes ), $path );
+	}
+
+	$htaccess = file_get_contents( YZRH_THEME_DIR . '/.htaccess' );
+	assert_contains( 'Require all denied', $htaccess );
+	assert_contains( 'RedirectMatch 404', $htaccess );
+	preg_match( '/<FilesMatch "([^"]+)">/', $htaccess, $files );
+	preg_match( '/RedirectMatch 404 "([^"]+)"/', $htaccess, $dirs );
+	foreach ( array( '.gitattributes', '.htaccess', 'README.md', 'AGENTS.md', 'compose.yml', 'run-all.sh' ) as $name ) {
+		assert_same( 1, preg_match( '/' . $files[1] . '/', $name ), "{$name} is denied" );
+	}
+	foreach ( array( 'style.css', 'screenshot.png', 'footerscript.js', 'functions.php', 'NotoSansJP.woff2' ) as $name ) {
+		assert_same( 0, preg_match( '/' . $files[1] . '/', $name ), "{$name} is served" );
+	}
+	$pattern = '#' . str_replace( '#', '\#', $dirs[1] ) . '#';
+	foreach ( array( '/wp-content/themes/yzrh/.git/HEAD', '/wp-content/themes/yzrh/.agents/findings.md', '/wp-content/themes/yzrh/tests/run.php', '/blog/wp-content/themes/yzrh/.git' ) as $path ) {
+		assert_same( 1, preg_match( $pattern, $path ), "{$path} is 404" );
+	}
+	foreach ( array( '/wp-content/themes/yzrh/css/style.css', '/wp-content/themes/yzrh/js/tests.js', '/wp-content/themes/yzrh/assets/latest/a.css' ) as $path ) {
+		assert_same( 0, preg_match( $pattern, $path ), "{$path} is served" );
+	}
+} );
+
 /* ---------------------------------------------------------------------- */
 
 $failed  = 0;

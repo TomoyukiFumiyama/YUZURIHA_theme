@@ -125,6 +125,11 @@ if ( ! function_exists( 'yzrh_interview_archive_read_time' ) ) {
 	 * @return string
 	 */
 	function yzrh_interview_archive_read_time( $post_id ) {
+		// パスワード保護中は、本文の長さもカスタムフィールドも出さない。
+		if ( post_password_required( $post_id ) ) {
+			return '';
+		}
+
 		$read_time = get_post_meta( $post_id, 'interview_read_time', true );
 		if ( $read_time ) {
 			return sanitize_text_field( $read_time );
@@ -146,8 +151,10 @@ if ( ! function_exists( 'yzrh_interview_archive_byline' ) ) {
 	 * @return array
 	 */
 	function yzrh_interview_archive_byline( $post_id ) {
-		$name = get_post_meta( $post_id, 'interview_byline_name', true );
-		$role = get_post_meta( $post_id, 'interview_byline_role', true );
+		// パスワード保護中は、詳細ページ（single-interview.php）と同じくカスタムフィールドを使わない。
+		$is_protected = post_password_required( $post_id );
+		$name         = $is_protected ? '' : get_post_meta( $post_id, 'interview_byline_name', true );
+		$role         = $is_protected ? '' : get_post_meta( $post_id, 'interview_byline_role', true );
 
 		if ( ! $name ) {
 			$name = get_the_author_meta( 'display_name', (int) get_post_field( 'post_author', $post_id ) );
@@ -185,7 +192,7 @@ if ( ! function_exists( 'yzrh_interview_archive_card' ) ) {
 			<div class="interview-archive-card__num"><?php echo esc_html( sprintf( '%02d', $index ) ); ?></div>
 			<a class="interview-archive-card__thumb interview-archive-card__thumb--t<?php echo esc_attr( $thumb_mod ); ?>" href="<?php echo esc_url( get_permalink( $post_id ) ); ?>" aria-label="<?php echo esc_attr( get_the_title( $post_id ) ); ?>">
 				<span class="interview-archive-card__thumb-inner">
-					<?php if ( has_post_thumbnail( $post_id ) ) : ?>
+					<?php if ( has_post_thumbnail( $post_id ) && ! post_password_required( $post_id ) ) : ?>
 						<?php echo get_the_post_thumbnail( $post_id, 'medium_large' ); ?>
 					<?php endif; ?>
 					<span class="interview-archive-card__pattern" aria-hidden="true"></span>
@@ -330,7 +337,7 @@ $archive_title  = post_type_archive_title( '', false );
 			<div class="interview-archive-featured__marker"><?php esc_html_e( 'Featured Story', 'yzrh' ); ?></div>
 			<article class="interview-archive-featured-card">
 				<a class="interview-archive-featured-card__image" href="<?php echo esc_url( get_permalink( $featured_id ) ); ?>" aria-label="<?php echo esc_attr( get_the_title( $featured_id ) ); ?>">
-					<?php if ( has_post_thumbnail( $featured_id ) ) : ?>
+					<?php if ( has_post_thumbnail( $featured_id ) && ! post_password_required( $featured_id ) ) : ?>
 						<?php echo get_the_post_thumbnail( $featured_id, 'large' ); ?>
 					<?php endif; ?>
 					<span class="interview-archive-featured-card__badge"><?php esc_html_e( 'Featured', 'yzrh' ); ?></span>

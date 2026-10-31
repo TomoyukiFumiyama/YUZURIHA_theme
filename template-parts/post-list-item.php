@@ -22,7 +22,7 @@ $args = wp_parse_args(
 );
 ?>
 <article id="post-<?php the_ID(); ?>" <?php post_class( sanitize_html_class( $args['article_class'] ) ); ?>>
-	<?php if ( has_post_thumbnail() ) : ?>
+	<?php if ( has_post_thumbnail() && ! post_password_required() ) : ?>
 		<a class="<?php echo esc_attr( $args['thumbnail_class'] ); ?>" href="<?php the_permalink(); ?>"><?php the_post_thumbnail( 'medium_large' ); ?></a>
 	<?php endif; ?>
 

@@ -1,0 +1,11 @@
+# リポジトリ用のファイル（.git/・.agents/・tests/・Markdown など）を Web から読めないようにする。
+# Apache 用の多層防御。本来は本番にこれらを置かないこと（README「本番へのデプロイ」）。
+# Nginx などでは同等の設定をサーバー側に追加する。
+<IfModule mod_authz_core.c>
+	<FilesMatch "(^\.|\.(md|lock|dist|sh|yml|yaml|xml)$)">
+		Require all denied
+	</FilesMatch>
+</IfModule>
+<IfModule mod_alias.c>
+	RedirectMatch 404 "/wp-content/themes/[^/]+/(\.git|\.agents|tests)(/|$)"
+</IfModule>

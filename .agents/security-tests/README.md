@@ -13,9 +13,10 @@
 | `env/fixtures/mu-plugins/` | 検証用に `interview` 投稿タイプとタクソノミーを登録（本番には置かない） |
 | `integration/run.php` | WordPress 内で実行する統合テスト（権限ごとのカスタマイザーの保存、プロパティベーステスト、境界値） |
 | `http/run.php` | 未ログインの HTTP テスト（Finding の再現、XSS・XML-RPC・コメントの否定確認、対照テスト） |
-| `proposed-fix.patch` | 修正案（[../remediation-plan.md](../remediation-plan.md)）。まだテーマには適用していない |
+| `proposed-fix.patch` | 修正案（[../remediation-plan.md](../remediation-plan.md)）。ブランチ `fix/security-2026-10-31` で適用済み |
 | `results/current/` | 修正前のテーマでの実行結果（2026-10-31） |
 | `results/proposed-fix/` | 修正案を当てたコピーでの実行結果（2026-10-31） |
+| `results/fix-branch/` | ブランチ `fix/security-2026-10-31` の作業ツリーでの実行結果（2026-10-31） |
 
 ## 実行方法
 

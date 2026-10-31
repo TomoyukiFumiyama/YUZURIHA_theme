@@ -27,7 +27,7 @@ get_header();
                         <p class="hero__summary"><?php echo esc_html( get_the_excerpt() ); ?></p>
                     <?php endif; ?>
                 </div>
-                <?php if ( has_post_thumbnail() ) : ?>
+                <?php if ( has_post_thumbnail() && ! post_password_required() ) : ?>
                     <div class="hero__image-wrapper">
                         <?php the_post_thumbnail( 'large', array( 'class' => 'hero__image' ) ); ?>
                     </div>

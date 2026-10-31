@@ -41,6 +41,8 @@ class YZRH_Security_Hardening {
 		add_filter( 'comments_array', '__return_empty_array', 10, 2 );
 
 		add_action( 'send_headers', array( __CLASS__, 'send_security_headers' ) );
+		// 公開記事のない利用者（会員など）の投稿者アーカイブを 404 にする。
+		add_action( 'template_redirect', array( __CLASS__, 'disable_empty_author_archives' ) );
 		// 優先度 100: カスタム投稿タイプの登録（通常は init の優先度 10）が終わった後に実行する。
 		add_action( 'init', array( __CLASS__, 'disable_comment_support' ), 100 );
 		add_action( 'admin_init', array( __CLASS__, 'disable_comment_support' ) );
@@ -48,6 +50,25 @@ class YZRH_Security_Hardening {
 		add_action( 'admin_menu', array( __CLASS__, 'hide_comment_admin_menu' ), 100 );
 		add_action( 'wp_before_admin_bar_render', array( __CLASS__, 'hide_comment_admin_bar' ) );
 		add_action( 'wp_dashboard_setup', array( __CLASS__, 'hide_comment_dashboard_widget' ) );
+	}
+
+	/**
+	 * 公開記事が 1 件もない利用者の投稿者アーカイブを 404 にする（template_redirect）。
+	 *
+	 * なぜ必要か: WordPress は、記事のない利用者でも `/?author=ID` や `/author/{スラッグ}` に
+	 * 200 を返す。テーマはそのページで表示名・自己紹介（archive.php）と Person の JSON-LD
+	 * （サイト URL・SNS）を出力するため、投稿しない会員のプロフィールまで公開されてしまう。
+	 * 案件で記事のない筆者ページを表示したい場合は `yzrh_404_empty_author_archives` で false を返す。
+	 */
+	public static function disable_empty_author_archives() {
+		if ( ! is_author() || have_posts() || ! apply_filters( 'yzrh_404_empty_author_archives', true ) ) {
+			return;
+		}
+
+		global $wp_query;
+		$wp_query->set_404();
+		status_header( 404 );
+		nocache_headers();
 	}
 
 	/**

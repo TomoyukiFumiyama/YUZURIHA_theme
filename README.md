@@ -127,6 +127,12 @@ WordPress 本体がなくても、PHP（と、404 のテストには Node.js）�
 php tests/run.php
 ```
 
+実際の WordPress を使うセキュリティの再現・回帰テストは `.agents/security-tests/` にあります。Docker 上に、外部ネットワークのない使い捨て環境を作って実行します（手順は `.agents/security-tests/README.md`）。
+
+```bash
+bash .agents/security-tests/run-all.sh
+```
+
 ## 本番へのデプロイ
 
 **本番環境には `tests/` を含めないでください。** `tests/` は開発用の回帰テストです。WordPress 関数のスタブ定義、`shell_exec()` による Node.js の実行、一時ファイルの書き込みを含みます。CLI 以外から実行されると 404 を返して終了するようにしていますが、本番に置く必要はありません。
@@ -139,13 +145,21 @@ php tests/run.php
 | `.agents/`、`AGENTS.md` | 開発用のドキュメント・指示ログ |
 | `.git/` | バージョン管理用 |
 
-Git からテーマの ZIP を作る例:
+`.gitattributes` でこれらを `export-ignore` にしているため、`git archive` で作る ZIP からは自動的に除外されます。
 
 ```bash
-git archive --format=zip -o yuzuriha-theme.zip HEAD -- . ':!tests' ':!.agents' ':!AGENTS.md'
+git archive --format=zip -o yuzuriha-theme.zip HEAD
 ```
 
-FTP やデプロイツールでアップロードする場合も、上の表のパスを除外対象に設定してください。
+FTP やデプロイツールでアップロードする場合も、上の表のパスを除外対象に設定してください。**`git clone` / `git pull` でテーマディレクトリに直接配置しないでください。**`.git/` からソースと履歴を、`.agents/` から監査・セキュリティ診断の報告書を読み取られます。
+
+配置を誤った場合の多層防御として、テーマ直下の `.htaccess`（Apache 2.4）で次を拒否しています。ドットで始まるファイル、`*.md`・`*.lock`・`*.dist`・`*.sh`・`*.yml`・`*.yaml`・`*.xml`、`.git/`・`.agents/`・`tests/` 以下（404）です。CSS・JS・フォント・画像は通常どおり配信されます。`.htaccess` が効かない Nginx などでは、サーバー側に同等の設定を追加してください。
+
+```nginx
+location ~* /wp-content/themes/[^/]+/(\.git|\.agents|tests)(/|$) { return 404; }
+location ~* /wp-content/themes/[^/]+/.*\.(md|lock|sh|ya?ml)$   { return 404; }
+location ~ /\.                                                  { deny all; }
+```
 
 ## JavaScript とセキュリティ
 
@@ -165,4 +179,7 @@ add_filter( 'yzrh_hsts_directives', function ( $directives ) {
 
 - 404 ページの `dataLayer` には、クエリ文字列を除き、メールアドレス・電話番号・トークンなどに見えるパスのセグメントを伏せ字にした URL を送ります。外部サイトからのリファラーは origin だけを送ります。
 - コメント受付を閉じ、コメント・トラックバック対応を全投稿タイプから外します。管理メニュー、管理バー、ダッシュボードにもコメント項目を表示しません。
+- 公開記事が 1 件もない利用者（会員など）の筆者ページ（`/?author=ID`、`/author/{スラッグ}`）は 404 にします。WordPress は記事のない利用者にも筆者ページを返すため、そのままでは表示名・自己紹介・サイト URL・スラッグ（既定ではログイン名）が公開されるためです。記事のない筆者ページも表示したい案件では、`add_filter( 'yzrh_404_empty_author_archives', '__return_false' );` で無効にできます。
+- パスワード保護した投稿では、本文と同じく付随情報も出力しません。対象は、アイキャッチ（詳細・一覧の HTML、`og:image`、JSON-LD の `image`）、インタビューのカスタムフィールド（詳細ページ・一覧のバイライン）、本文から計算する読了時間です。
+- パンくず（`yzrh_breadcrumb()` と BreadcrumbList の JSON-LD）には、非公開・下書き・ゴミ箱の親ページを含めません（`is_post_publicly_viewable()` で判定）。
 - `tel:` リンクは CSS とバニラ JavaScriptの両方で制御し、幅767px以下のSP表示でのみ発信動作を許可します。
