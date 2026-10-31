@@ -2,6 +2,8 @@
 
 ## 2026-10-31
 
+- セキュリティ診断を実施し、報告書を `.agents/` に追加（`security-summary.md`・`wordpress-inventory.md`・`attack-surface.md`・`authorization-matrix.md`・`findings.md`・`attack-paths.md`・`remediation-plan.md`・`coverage-matrix.md`）。Critical / High は 0 件。Medium 4 件（F-01 記事のない利用者の筆者ページでプロフィールが公開される、F-02 パスワード保護投稿のアイキャッチ・カスタムフィールドが漏れる、F-03 パンくずに非公開・下書きの親ページが出る、F-04 リポジトリのまま配置すると `.git/`・`.agents/` が読める）を隔離環境で再現した。テーマのコードは変更しておらず、修正案は `.agents/security-tests/proposed-fix.patch` として提案のみ。
+- 隔離した Docker 環境（外部ネットワークなし・ダミーデータのみ）で再現・回帰テストを実行する `.agents/security-tests/` を追加（統合テスト 10 件、HTTP テスト 20 件、プロパティベーステスト・境界値テストを含む）。修正前・修正案の両方の実行結果を `results/` に保存。
 - カスタマイザーに「Google タグマネージャー」セクションを追加。「<head> 内に挿入するコード」（`gtm_head_code`）と「<body> 開始タグ直後に挿入するコード」（`gtm_body_code`）の 2 つのテキストエリアに、GTM 管理画面のスニペットをそのまま貼り付けると、それぞれ `wp_head`（優先度 1）と `wp_body_open`（優先度 1）で出力する。`<script>` を含む生の HTML を扱うため、セクション・設定の権限を `unfiltered_html` にし、サニタイズ時にも同じ権限を確認する。カスタマイザーのプレビューでは計測を避けるため出力しない。回帰テストを追加（67 件）。
 
 ## 2026-10-18

@@ -1,0 +1,17 @@
+# environment
+WordPress version: 7.1.3
+Database revision: 61833
+TinyMCE version:   4.9110 (49110-20250317)
+Package language:  en_US
+PHP 8.2.34
+name	status	version
+twentytwentyfive	inactive	1.5
+twentytwentyfour	inactive	1.6
+twentytwentythree	inactive	1.7
+yzrh	active	1.0.0
+name	status	version
+akismet	inactive	5.7.2
+hello	inactive	1.7.2
+yzrh-sec-fixtures	must-use	
+mu-plugins: yzrh-sec-fixtures.php
+/%postname%

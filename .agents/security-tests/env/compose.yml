@@ -1,0 +1,66 @@
+# 隔離された使い捨ての検証環境（外部ネットワークなし・ダミーデータのみ）。
+# 起動・投入・テスト・破棄は ../run-all.sh から行う。ホストにポートは公開しない。
+name: yzrh-sec
+
+x-db-env: &db-env
+  WORDPRESS_DB_HOST: db
+  WORDPRESS_DB_USER: wp
+  WORDPRESS_DB_PASSWORD: ${YZRH_SEC_DB_PASSWORD:?run ../run-all.sh}
+  WORDPRESS_DB_NAME: wp
+
+services:
+  db:
+    image: mariadb:11.4
+    environment:
+      MARIADB_DATABASE: wp
+      MARIADB_USER: wp
+      MARIADB_PASSWORD: ${YZRH_SEC_DB_PASSWORD:?run ../run-all.sh}
+      MARIADB_RANDOM_ROOT_PASSWORD: "1"
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 2s
+      retries: 60
+    networks: [sec]
+
+  wp:
+    image: wordpress:php8.2-apache
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *db-env
+      WORDPRESS_CONFIG_EXTRA: |
+        define( 'WP_HTTP_BLOCK_EXTERNAL', true );
+        define( 'DISABLE_WP_CRON', true );
+        define( 'AUTOMATIC_UPDATER_DISABLED', true );
+        define( 'WP_ENVIRONMENT_TYPE', 'local' );
+    volumes:
+      - wp:/var/www/html
+      # テーマはリポジトリ全体を読み取り専用でマウントする（Git で配置した本番と同じ状態を再現）。
+      - ${YZRH_SEC_THEME_DIR:-../../..}:/var/www/html/wp-content/themes/yzrh:ro
+      - ./fixtures/mu-plugins:/var/www/html/wp-content/mu-plugins:ro
+    networks:
+      sec:
+        aliases: [yzrh.test]
+
+  cli:
+    image: wordpress:cli-php8.2
+    user: "33:33"
+    profiles: [cli]
+    environment:
+      <<: *db-env
+    volumes:
+      - wp:/var/www/html
+      - ${YZRH_SEC_THEME_DIR:-../../..}:/var/www/html/wp-content/themes/yzrh:ro
+      - ./fixtures/mu-plugins:/var/www/html/wp-content/mu-plugins:ro
+      - ..:/sec:ro
+    networks: [sec]
+
+networks:
+  sec:
+    internal: true
+
+volumes:
+  wp: {}
