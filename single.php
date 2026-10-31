@@ -20,7 +20,7 @@ get_header();
 				</div>
 			</header>
 
-			<?php if ( has_post_thumbnail() ) : ?>
+			<?php if ( has_post_thumbnail() && ! post_password_required() ) : ?>
 				<div class="entry-thumbnail"><?php the_post_thumbnail( 'large' ); ?></div>
 			<?php endif; ?>
 

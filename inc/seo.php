@@ -334,6 +334,11 @@ if ( ! class_exists( 'YZRH_Structured_Data_Generator' ) ) {
 		 * @return array|null アイキャッチがなければ null（image を省略させる）。
 		 */
 		public static function get_post_image_object( $post_id ) {
+			// パスワード保護中の投稿は、本文と同じくアイキャッチも閲覧者に渡さない。
+			if ( post_password_required( $post_id ) ) {
+				return null;
+			}
+
 			$thumbnail_id = get_post_thumbnail_id( $post_id );
 			if ( ! $thumbnail_id ) {
 				return null;
@@ -1029,7 +1034,11 @@ function yzrh_get_breadcrumb_items() {
 			}
 		}
 		// 階層のある投稿タイプ（固定ページなど）は、最上位の親から順に挟む。
+		// 非公開・下書き・ゴミ箱の親は、タイトルと URL を公開しないよう読み飛ばす。
 		foreach ( array_reverse( get_post_ancestors( $post_id ) ) as $ancestor_id ) {
+			if ( ! is_post_publicly_viewable( $ancestor_id ) ) {
+				continue;
+			}
 			$items[] = array( 'name' => get_the_title( $ancestor_id ), 'url' => get_permalink( $ancestor_id ) );
 		}
 		$items[] = array( 'name' => get_the_title( $post_id ), 'url' => get_permalink( $post_id ) );
@@ -1163,7 +1172,8 @@ function yzrh_get_ogp_tags() {
 	);
 	if ( is_singular() ) {
 		$tags['og:description'] = YZRH_Structured_Data_Generator::get_post_description( $post_id, true );
-		$image                  = get_the_post_thumbnail_url( $post_id, 'full' );
+		// パスワード保護中の投稿は、本文と同じくアイキャッチも閲覧者に渡さない。
+		$image                  = post_password_required( $post_id ) ? '' : get_the_post_thumbnail_url( $post_id, 'full' );
 		if ( $image ) {
 			$tags['og:image'] = $image;
 		}

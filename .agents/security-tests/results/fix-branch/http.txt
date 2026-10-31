@@ -1,0 +1,29 @@
+PASS  front page sends the theme security headers and no X-Pingback
+INFO  REST API responses do not carry the theme security headers
+      status 200; x-content-type-options=nosniff; referrer-policy=missing; x-frame-options=missing
+PASS  reflected input is escaped (search, order, paged, 404 path)
+PASS  [F-01] author archive of a member without posts does not publish profile data
+PASS  [F-02] password-protected post: no cover image, excerpt or body in HTML, OGP or JSON-LD
+PASS  [F-02] password-protected interview: single page hides custom fields and cover
+PASS  [F-02] interview archive does not reveal protected interviews' custom fields, cover or length
+PASS  [F-03] breadcrumbs of a public page do not reveal a private or draft parent
+PASS  contributor-controlled interview fields and block attributes are not executable (single and archive)
+      markers present but inert: 6 (single), 6 (archive)
+PASS  GTM code is printed inside <head> and right after <body>
+PASS  XML-RPC exposes no methods and refuses pingbacks
+      only IXR introspection methods remain (system.multicall, system.listMethods, system.getCapabilities); system.multicall cannot reach wp.* methods
+PASS  anonymous comment creation is refused (REST and wp-comments-post.php)
+      REST 401, form 403
+INFO  comments left from before comments were disabled are still readable over REST
+      status 200: approved legacy comments (author name, content) are listed although the theme hides comments in templates
+INFO  user enumeration paths (WordPress core behaviour)
+      /?author=<member id> → 404 
+      /wp-json/wp/v2/users → 200, slugs: admin, author, contrib_a, lab_installer
+PASS  [F-04] repository-only files are not served from the theme directory
+PASS  control: an author with published posts keeps a public author page and Person JSON-LD
+PASS  control: a public post keeps its cover image in HTML, OGP and JSON-LD
+PASS  control: a public parent page still appears in the breadcrumbs
+PASS  control: theme CSS and JS are still served
+PASS  control: theme PHP files return nothing when requested directly
+
+17 passed, 0 failed, 3 info

@@ -15,7 +15,7 @@ get_header();
 				<time datetime="<?php echo esc_attr( get_the_date( 'c' ) ); ?>"><?php echo esc_html( get_the_date() ); ?></time>
 			</header>
 
-			<?php if ( has_post_thumbnail() ) : ?>
+			<?php if ( has_post_thumbnail() && ! post_password_required() ) : ?>
 				<div class="entry-thumbnail"><?php the_post_thumbnail( 'large' ); ?></div>
 			<?php endif; ?>
 

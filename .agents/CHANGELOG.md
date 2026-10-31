@@ -2,6 +2,13 @@
 
 ## 2026-10-31
 
+- セキュリティ診断の F-01: 公開記事のない利用者の筆者ページ（`/?author=ID`・`/author/{スラッグ}`）を 404 にする `YZRH_Security_Hardening::disable_empty_author_archives()`（`template_redirect`）を追加。WordPress は記事のない利用者にも筆者ページを返し、テーマが表示名・自己紹介・サイト URL・スラッグ（Person の JSON-LD と `archive.php`）を公開していたため。`yzrh_404_empty_author_archives` フィルターで無効化できる。
+- セキュリティ診断の F-02: パスワード保護した投稿で、アイキャッチ（`get_post_image_object()`・`og:image`・`single.php`・`single-news.php`・`single-casestudy.php`・`page-templates/job-details.php`・`template-parts/post-list-item.php`・インタビュー一覧）、インタビュー一覧のバイライン（カスタムフィールド）と読了時間を出力しないよう変更。詳細ページだけが保護済みで、他の画面からパスワードなしで読めたため。
+- セキュリティ診断の F-03: パンくず（`yzrh_get_breadcrumb_items()`）から、`is_post_publicly_viewable()` が false の親ページ（非公開・下書き・ゴミ箱）を除外。BreadcrumbList の JSON-LD に非公開ページのタイトルと ID が出ていたため。
+- セキュリティ診断の F-04: `.gitattributes`（`.agents/`・`tests/`・`AGENTS.md` を `export-ignore`）と、テーマ直下の `.htaccess`（ドットファイル・Markdown などを拒否し、`.git/`・`.agents/`・`tests/` を 404）を追加。リポジトリのまま配置すると、`.git/` と `.agents/`（報告書を含む）が Web から読めたため。README の「本番へのデプロイ」に、自動除外・`git clone` での配置の禁止・Nginx の設定例を追記。
+- 上記の回帰テスト 6 件を `tests/run.php` に追加（73 件）。`tests/bootstrap.php` に `get_post_ancestors()`・`is_post_publicly_viewable()`・`get_post_thumbnail_id()`・`status_header()`・`nocache_headers()`・`WP_Query::set_404()` のスタブを追加。隔離環境での再検証結果を `.agents/security-tests/results/fix-branch/` に保存し、報告書（`findings.md`・`security-summary.md`・`remediation-plan.md`）に対応状況を追記。
+- セキュリティ診断を実施し、報告書を `.agents/` に追加（`security-summary.md`・`wordpress-inventory.md`・`attack-surface.md`・`authorization-matrix.md`・`findings.md`・`attack-paths.md`・`remediation-plan.md`・`coverage-matrix.md`）。Critical / High は 0 件。Medium 4 件（F-01 記事のない利用者の筆者ページでプロフィールが公開される、F-02 パスワード保護投稿のアイキャッチ・カスタムフィールドが漏れる、F-03 パンくずに非公開・下書きの親ページが出る、F-04 リポジトリのまま配置すると `.git/`・`.agents/` が読める）を隔離環境で再現した。テーマのコードは変更しておらず、修正案は `.agents/security-tests/proposed-fix.patch` として提案のみ。
+- 隔離した Docker 環境（外部ネットワークなし・ダミーデータのみ）で再現・回帰テストを実行する `.agents/security-tests/` を追加（統合テスト 10 件、HTTP テスト 20 件、プロパティベーステスト・境界値テストを含む）。修正前・修正案の両方の実行結果を `results/` に保存。
 - カスタマイザーに「Google タグマネージャー」セクションを追加。「<head> 内に挿入するコード」（`gtm_head_code`）と「<body> 開始タグ直後に挿入するコード」（`gtm_body_code`）の 2 つのテキストエリアに、GTM 管理画面のスニペットをそのまま貼り付けると、それぞれ `wp_head`（優先度 1）と `wp_body_open`（優先度 1）で出力する。`<script>` を含む生の HTML を扱うため、セクション・設定の権限を `unfiltered_html` にし、サニタイズ時にも同じ権限を確認する。カスタマイザーのプレビューでは計測を避けるため出力しない。回帰テストを追加（67 件）。
 
 ## 2026-10-18

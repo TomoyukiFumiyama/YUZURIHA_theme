@@ -1,0 +1,61 @@
+PASS  front page sends the theme security headers and no X-Pingback
+INFO  REST API responses do not carry the theme security headers
+      status 200; x-content-type-options=nosniff; referrer-policy=missing; x-frame-options=missing
+PASS  reflected input is escaped (search, order, paged, 404 path)
+FAIL  [F-01] author archive of a member without posts does not publish profile data
+      redirect: ; status 200; Person JSON-LD: [{"@context":"https://schema.org","@type":"Person","name":"MEMBER-A-DISPLAY","url":"http://yzrh.test/author/member_a","description":"MEMBER-A-BIO private note","sameAs":["https://member-a.example.test/profile"]}]:
+      MEMBER-A-BIO (2x)
+              … Person","name":"MEMBER-A-DISPLAY","url":"http://yzrh.test/author/member_a","description":"MEMBER-A-BIO private note","sameAs":["https://member-a.example.test/profile"]}</script> <style id="wp-
+              … s="page-title">Author: <span>MEMBER-A-DISPLAY</span></h1><div class="archive-description">MEMBER-A-BIO private note</div> </header> <p>該当する記事が見つかりませんでした
+      member-a.example.test (1x)
+              … //yzrh.test/author/member_a","description":"MEMBER-A-BIO private note","sameAs":["https://member-a.example.test/profile"]}</script> <style id="wp-img-auto-sizes-contain-inline-css"> img:is([sizes=auto 
+FAIL  [F-02] password-protected post: no cover image, excerpt or body in HTML, OGP or JSON-LD
+      protected post cover image:
+      secret-protected-post-cover (3x)
+              … orized","image":{"@type":"ImageObject","url":"http://yzrh.test/wp-content/uploads/2026/10/secret-protected-post-cover.jpg","width":1200,"height":630}}</script> <style id="wp-img-auto-sizes-contain-inline-css
+              … t="en_US"> <meta property="og:image" content="http://yzrh.test/wp-content/uploads/2026/10/secret-protected-post-cover.jpg"> </head> <body class="wp-singular post-template-default single single-post post
+              … humbnail"><img width="1024" height="538" src="http://yzrh.test/wp-content/uploads/2026/10/secret-protected-post-cover.jpg" class="attachment-large size-large wp-post-image" alt="" decoding="async" fetchprior
+FAIL  [F-02] password-protected interview: single page hides custom fields and cover
+      protected interview cover image:
+      secret-protected-interview-cover (1x)
+              … t="en_US"> <meta property="og:image" content="http://yzrh.test/wp-content/uploads/2026/10/secret-protected-interview-cover.jpg"> </head> <body class="wp-singular interview-template-default single single-intervie
+FAIL  [F-02] interview archive does not reveal protected interviews' custom fields, cover or length
+      interview archive:
+      SECRET-BYLINE-NAME (1x)
+              … interview-archive-card__avatar--3">S</div> <div class="interview-archive-card__name">SECRET-BYLINE-NAME<small>SECRET-BYLINE-ROLE</small></div> </div> </article> </div> </se
+      SECRET-BYLINE-ROLE (1x)
+              … vatar--3">S</div> <div class="interview-archive-card__name">SECRET-BYLINE-NAME<small>SECRET-BYLINE-ROLE</small></div> </div> </article> </div> </section> </main> <
+      secret-protected-interview-cover (1x)
+              …  <img width="768" height="403" src="http://yzrh.test/wp-content/uploads/2026/10/secret-protected-interview-cover.jpg" class="attachment-medium_large size-medium_large wp-post-image" alt="" decoding="asy
+      >10 min< (1x)
+              … 26-10-01T10:00:00+00:00">2026.10.01</time> <span class="interview-archive-card__read">10 min</span> </div> <h3 class="interview-archive-card__title"><a href="http://yzrh.test/
+FAIL  [F-03] breadcrumbs of a public page do not reveal a private or draft parent
+      page_child_of_private (200): :[{"@type":"ListItem","position":1,"name":"YZRH Security Lab","item":"http://yzrh.test/"},{"@type":"ListItem","position":2,"name":"Private: SECRET-PRIVATE-PARENT","item":"http://yzrh.test/?page_id=14"},{"@type":"ListItem","position":3,"name":"Public child page","item":"http://yzrh.test/internal-paren
+      page_child_of_draft (200): tElement":[{"@type":"ListItem","position":1,"name":"YZRH Security Lab","item":"http://yzrh.test/"},{"@type":"ListItem","position":2,"name":"SECRET-DRAFT-PARENT","item":"http://yzrh.test/?page_id=16"},{"@type":"ListItem","position":3,"name":"Public child of draft","item":"http://yzrh.test/draft-pare
+PASS  contributor-controlled interview fields and block attributes are not executable (single and archive)
+      markers present but inert: 6 (single), 6 (archive)
+PASS  GTM code is printed inside <head> and right after <body>
+PASS  XML-RPC exposes no methods and refuses pingbacks
+      only IXR introspection methods remain (system.multicall, system.listMethods, system.getCapabilities); system.multicall cannot reach wp.* methods
+PASS  anonymous comment creation is refused (REST and wp-comments-post.php)
+      REST 401, form 403
+INFO  comments left from before comments were disabled are still readable over REST
+      status 200: approved legacy comments (author name, content) are listed although the theme hides comments in templates
+INFO  user enumeration paths (WordPress core behaviour)
+      /?author=<member id> → 200 
+      /wp-json/wp/v2/users → 200, slugs: admin, author, contrib_a, lab_installer
+FAIL  [F-04] repository-only files are not served from the theme directory
+      /.agents/AUDIT-2026-10-17.md → 200, 36688 bytes, text/markdown
+      /.agents/PROMPTS.md → 200, 40961 bytes, text/markdown
+      /AGENTS.md → 200, 8746 bytes, text/markdown
+      /.git/HEAD → 200, 21 bytes, 
+      /.git/config → 200, 313 bytes, 
+      /README.md → 200, 14408 bytes, text/markdown
+PASS  control: an author with published posts keeps a public author page and Person JSON-LD
+PASS  control: a public post keeps its cover image in HTML, OGP and JSON-LD
+PASS  control: a public parent page still appears in the breadcrumbs
+PASS  control: theme CSS and JS are still served
+PASS  control: theme PHP files return nothing when requested directly
+
+11 passed, 6 failed, 3 info
+
